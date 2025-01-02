@@ -37,7 +37,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $project_name = trim(htmlspecialchars($_POST['project_name']));
     $description = trim(htmlspecialchars($_POST['project_description']));
     $created_by = $_SESSION['user_id'];
-    $assigned_to = isset($_POST['assigned_to']) ? (int)$_POST['assigned_to'] : null;
+    $assigned_to = isset($_POST['assigned_to']) ? (int) $_POST['assigned_to'] : null;
 
     if (empty($project_name) || empty($description)) {
         die(json_encode(["status" => "error", "message" => "Please fill all required fields."]));
@@ -199,6 +199,52 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         onclick="openCreateProjectModal()">
         Create Project
     </button>
+
+    <?php
+    include '../config/database.php';
+
+    $created_by = $_SESSION['user_id'];
+    $query = "SELECT project_name, created_at FROM projects WHERE created_by = ? ORDER BY created_at DESC";
+    $stmt = $conn->prepare($query);
+
+    if (!$stmt) {
+        die("Prepare failed: " . $conn->error);
+    }
+
+    $stmt->bind_param("i", $created_by);
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    if ($result->num_rows > 0): ?>
+        <ul class="bg-white rounded-lg shadow divide-y divide-gray-200 w-[80%] top-[13%] left-[18%] absolute">
+            <?php while ($row = $result->fetch_assoc()): ?>
+                <li class="px-6 py-4">
+                    <div class="flex justify-between">
+                        <a href="./addtask.php"
+                            class="font-semibold text-lg"><?php echo htmlspecialchars($row['project_name']); ?></a>
+                        <span class="text-gray-500 text-xs">
+                            <?php
+                            $created_at = new DateTime($row['created_at']);
+                            $now = new DateTime();
+                            $interval = $created_at->diff($now);
+                            if ($interval->d > 0) {
+                                echo "Started " . $interval->d . " day(s) ago";
+                            } else if ($interval->h > 0) {
+                                echo "Started " . $interval->h . " hour(s) ago";
+                            } else {
+                                echo "Started just now";
+                            }
+                            ?>
+                        </span>
+                    </div>
+                    <p class="text-gray-700">This project is currently in progress.</p>
+                </li>
+            <?php endwhile; ?>
+        </ul>
+    <?php else: ?>
+        <p class="text-center text-gray-500">No projects available.</p>
+    <?php endif;
+    ?>
 
     <!-- Create Project Modal -->
     <div class="create-project-modal hidden fixed z-10 inset-0 overflow-y-auto" aria-labelledby="modal-title"
