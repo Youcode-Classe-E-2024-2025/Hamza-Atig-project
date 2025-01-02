@@ -1,7 +1,6 @@
 <?php
 session_start();
 
-// Redirect to login if the user is not logged in or is not a member
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'member') {
     header("Location: login.php");
     exit();
@@ -9,7 +8,6 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'member') {
 
 include '../config/database.php';
 
-// Fetch all teams and their chefs
 $query = "SELECT user_id, username, team_name FROM users WHERE role = 'Chef'";
 $chefs_result = $conn->query($query);
 $chefs = [];
@@ -19,7 +17,6 @@ if ($chefs_result->num_rows > 0) {
     }
 }
 
-// Fetch the logged-in member's join requests
 $member_id = $_SESSION['user_id'];
 $query = "SELECT jr.request_id, jr.receiver_id, jr.status, u.username, u.team_name 
           FROM join_requests jr
@@ -96,9 +93,8 @@ $conn->close();
                 <a href="send_request.php" class="block text-gray-300 hover:text-white">Join Teams</a>
             </li>
             <li>
-                <a href="#" class="block text-gray-300 hover:text-white">My Projects</a>
+                <a href="logout.php" class="block text-gray-300 hover:text-white">Logout</a>
             </li>
-            <li>
         </ul>
     </aside>
 

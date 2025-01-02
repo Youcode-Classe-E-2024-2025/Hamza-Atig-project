@@ -1,3 +1,103 @@
+<?php
+session_start();
+
+if (!isset($_SESSION['user_id'])) {
+    header("Location: login.php");
+    exit();
+}
+
+include '../config/database.php';
+
+$created_by = $_SESSION['user_id'];
+$query = "SELECT project_id, project_name FROM projects WHERE created_by = ?";
+$stmt = $conn->prepare($query);
+if (!$stmt) {
+    die("Prepare failed: " . $conn->error);
+}
+
+$stmt->bind_param("i", $created_by);
+$stmt->execute();
+$result = $stmt->get_result();
+$projects = [];
+if ($result->num_rows > 0) {
+    while ($row = $result->fetch_assoc()) {
+        $projects[] = $row;
+    }
+}
+
+$project_id = isset($_GET['project_id']) ? (int)$_GET['project_id'] : null;
+$tasks = [];
+if ($project_id) {
+    $query = "SELECT t.task_id, t.task_title, t.task_description, t.due_date, t.status, t.assigned_to, u.username 
+              FROM tasks t
+              LEFT JOIN users u ON t.assigned_to = u.user_id
+              WHERE t.project_id = ?";
+    $stmt = $conn->prepare($query);
+    if (!$stmt) {
+        die("Prepare failed: " . $conn->error);
+    }
+
+    $stmt->bind_param("i", $project_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    if ($result->num_rows > 0) {
+        while ($row = $result->fetch_assoc()) {
+            $tasks[] = $row;
+        }
+    }
+}
+
+$members = [];
+if ($project_id) {
+    $query = "SELECT u.user_id, u.username 
+              FROM users u
+              JOIN join_requests jr ON u.user_id = jr.user_id
+              WHERE jr.receiver_id = ? AND jr.status = 'approved'";
+    $stmt = $conn->prepare($query);
+    if (!$stmt) {
+        die("Prepare failed: " . $conn->error);
+    }
+
+    $stmt->bind_param("i", $_SESSION['user_id']);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    if ($result->num_rows > 0) {
+        while ($row = $result->fetch_assoc()) {
+            $members[] = $row;
+        }
+    }
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_task'])) {
+    $task_title = trim($_POST['task_title']);
+    $task_description = trim($_POST['task_description']);
+    $due_date = $_POST['due_date'];
+    $assigned_to = isset($_POST['assigned_to']) ? (int)$_POST['assigned_to'] : null;
+
+    if (empty($task_title) || empty($task_description) || empty($due_date)) {
+        die("Please fill in all required fields.");
+    }
+
+    $query = "INSERT INTO tasks (task_title, task_description, due_date, status, project_id, assigned_to) 
+              VALUES (?, ?, ?, 'backlog', ?, ?)";
+    $stmt = $conn->prepare($query);
+    if (!$stmt) {
+        die("Prepare failed: " . $conn->error);
+    }
+
+    $stmt->bind_param("sssii", $task_title, $task_description, $due_date, $project_id, $assigned_to);
+    if ($stmt->execute()) {
+        header("Location: addtask.php?project_id=$project_id");
+        exit();
+    } else {
+        die("Error: " . $stmt->error);
+    }
+}
+
+$stmt->close();
+$conn->close();
+?>
+
 <!DOCTYPE html>
 <html lang="en">
 
@@ -9,18 +109,7 @@
 </head>
 
 <body class="bg-gray-900 min-h-screen p-6">
-    <button data-drawer-target="default-sidebar" data-drawer-toggle="default-sidebar" aria-controls="default-sidebar"
-        type="button"
-        class="inline-flex items-center p-2 mt-2 ms-3 text-sm text-gray-500 rounded-lg sm:hidden hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-200 dark:text-gray-400 dark:hover:bg-gray-700 dark:focus:ring-gray-600">
-        <span class="sr-only">Open sidebar</span>
-        <svg class="w-6 h-6" aria-hidden="true" fill="currentColor" viewBox="0 0 20 20"
-            xmlns="http://www.w3.org/2000/svg">
-            <path clip-rule="evenodd" fill-rule="evenodd"
-                d="M2 4.75A.75.75 0 012.75 4h14.5a.75.75 0 010 1.5H2.75A.75.75 0 012 4.75zm0 10.5a.75.75 0 01.75-.75h7.5a.75.75 0 010 1.5h-7.5a.75.75 0 01-.75-.75zM2 10a.75.75 0 01.75-.75h14.5a.75.75 0 010 1.5H2.75A.75.75 0 012 10z">
-            </path>
-        </svg>
-    </button>
-
+    <!-- Sidebar -->
     <aside id="default-sidebar"
         class="fixed top-0 left-0 z-40 w-64 h-screen transition-transform -translate-x-full sm:translate-x-0"
         aria-label="Sidebar">
@@ -55,7 +144,7 @@
                     </a>
                 </li>
                 <li>
-                    <a href="#"
+                    <a href="inbox.php"
                         class="flex items-center p-2 text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 group">
                         <svg class="flex-shrink-0 w-5 h-5 text-gray-500 transition duration-75 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-white"
                             aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor"
@@ -93,7 +182,7 @@
                     </a>
                 </li>
                 <li>
-                    <a href="#"
+                    <a href="logout.php"
                         class="flex items-center p-2 text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 group">
                         <svg class="flex-shrink-0 w-5 h-5 text-gray-500 transition duration-75 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-white"
                             aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 18 16">
@@ -109,82 +198,130 @@
 
     <div class="w-[80%] left-[18%] absolute">
         <div class="flex justify-between items-center mb-8">
-            <h1 class="text-3xl font-bold text-gray-100">Project Title</h1>
+            <h1 class="text-3xl font-bold text-gray-100">Kanban Board</h1>
             <button onclick="openAddTaskModal()"
                 class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg">Add Task</button>
         </div>
 
+        <!-- Project Selection -->
+        <div class="mb-6">
+            <label for="projectSelect" class="block text-sm font-medium text-gray-300 mb-2">Select Project</label>
+            <select id="projectSelect" onchange="loadProjectTasks()"
+                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200">
+                <option value="">Choose a Project</option>
+                <?php foreach ($projects as $project): ?>
+                    <option value="<?php echo $project['project_id']; ?>"
+                        <?php echo ($project_id == $project['project_id']) ? 'selected' : ''; ?>>
+                        <?php echo htmlspecialchars($project['project_name']); ?>
+                    </option>
+                <?php endforeach; ?>
+            </select>
+        </div>
+
+        <!-- Kanban Board -->
         <div class="flex flex-row gap-6 overflow-x-auto">
-            <!-- Task Readiness -->
+            <!-- Backlog -->
             <div class="bg-white rounded-lg shadow-lg p-4 w-[350px]" ondrop="drop(event)" ondragover="allowDrop(event)"
-                id="task-readiness">
+                id="backlog">
                 <div class="flex items-center justify-between mb-4">
-                    <h2 class="text-lg font-semibold text-gray-700">backlog</h2>
+                    <h2 class="text-lg font-semibold text-gray-700">Backlog</h2>
                     <span class="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded"
-                        id="readiness-count">1</span>
+                        id="backlog-count">0</span>
                 </div>
-                <div class="space-y-3" id="readiness-tasks">
-                    <div class="bg-gray-50 p-4 rounded-lg hover:shadow-md transition-all cursor-pointer"
-                        draggable="true" ondragstart="drag(event)" id="task1">
-                        <h3 class="font-medium text-gray-800">Website Redesign</h3>
-                        <p class="text-sm text-gray-600 mt-2">Update homepage layout and improve mobile responsiveness
-                        </p>
-                        <div class="flex justify-between items-center mt-3">
-                            <span class="text-xs text-gray-500">Due: Dec 25</span>
-                            <div class="space-x-2">
-                                <button class="text-blue-600 hover:text-blue-800" onclick="editTask('task1')">✎</button>
-                                <button class="text-red-600 hover:text-red-800" onclick="deleteTask('task1')">×</button>
+                <div class="space-y-3" id="backlog-tasks">
+                    <?php foreach ($tasks as $task): ?>
+                        <?php if ($task['status'] === 'backlog'): ?>
+                            <div class="bg-gray-50 p-4 rounded-lg hover:shadow-md transition-all cursor-pointer"
+                                draggable="true" ondragstart="drag(event)" id="task<?php echo $task['task_id']; ?>">
+                                <h3 class="font-medium text-gray-800"><?php echo htmlspecialchars($task['task_title']); ?></h3>
+                                <p class="text-sm text-gray-600 mt-2"><?php echo htmlspecialchars($task['task_description']); ?></p>
+                                <div class="flex justify-between items-center mt-3">
+                                    <span class="text-xs text-gray-500">Due: <?php echo $task['due_date']; ?></span>
+                                    <div class="space-x-2">
+                                        <button class="text-blue-600 hover:text-blue-800"
+                                            onclick="editTask(<?php echo $task['task_id']; ?>)">✎</button>
+                                        <button class="text-red-600 hover:text-red-800"
+                                            onclick="deleteTask(<?php echo $task['task_id']; ?>)">×</button>
+                                    </div>
+                                </div>
+                                <?php if ($task['username']): ?>
+                                    <div class="mt-2">
+                                        <span class="text-xs text-gray-500">Assigned to: <?php echo htmlspecialchars($task['username']); ?></span>
+                                    </div>
+                                <?php endif; ?>
                             </div>
-                        </div>
-                    </div>
+                        <?php endif; ?>
+                    <?php endforeach; ?>
                 </div>
             </div>
 
-            <!-- Work In Progress -->
+            <!-- ToDo -->
             <div class="bg-white rounded-lg shadow-lg p-4 w-[350px]" ondrop="drop(event)" ondragover="allowDrop(event)"
-                id="in-progress">
+                id="todo">
                 <div class="flex items-center justify-between mb-4">
                     <h2 class="text-lg font-semibold text-gray-700">ToDo</h2>
                     <span class="bg-yellow-100 text-yellow-800 text-xs font-medium px-2.5 py-0.5 rounded"
-                        id="progress-count">1</span>
+                        id="todo-count">0</span>
                 </div>
-                <div class="space-y-3" id="progress-tasks">
-                    <div class="bg-yellow-50 p-4 rounded-lg hover:shadow-md transition-all cursor-pointer"
-                        draggable="true" ondragstart="drag(event)" id="task2">
-                        <h3 class="font-medium text-gray-800">API Integration</h3>
-                        <p class="text-sm text-gray-600 mt-2">Implement payment gateway API endpoints</p>
-                        <div class="flex justify-between items-center mt-3">
-                            <span class="text-xs text-gray-500">Due: Dec 20</span>
-                            <div class="space-x-2">
-                                <button class="text-blue-600 hover:text-blue-800" onclick="editTask('task2')">✎</button>
-                                <button class="text-red-600 hover:text-red-800" onclick="deleteTask('task2')">×</button>
+                <div class="space-y-3" id="todo-tasks">
+                    <?php foreach ($tasks as $task): ?>
+                        <?php if ($task['status'] === 'todo'): ?>
+                            <div class="bg-yellow-50 p-4 rounded-lg hover:shadow-md transition-all cursor-pointer"
+                                draggable="true" ondragstart="drag(event)" id="task<?php echo $task['task_id']; ?>">
+                                <h3 class="font-medium text-gray-800"><?php echo htmlspecialchars($task['task_title']); ?></h3>
+                                <p class="text-sm text-gray-600 mt-2"><?php echo htmlspecialchars($task['task_description']); ?></p>
+                                <div class="flex justify-between items-center mt-3">
+                                    <span class="text-xs text-gray-500">Due: <?php echo $task['due_date']; ?></span>
+                                    <div class="space-x-2">
+                                        <button class="text-blue-600 hover:text-blue-800"
+                                            onclick="editTask(<?php echo $task['task_id']; ?>)">✎</button>
+                                        <button class="text-red-600 hover:text-red-800"
+                                            onclick="deleteTask(<?php echo $task['task_id']; ?>)">×</button>
+                                    </div>
+                                </div>
+                                <?php if ($task['username']): ?>
+                                    <div class="mt-2">
+                                        <span class="text-xs text-gray-500">Assigned to: <?php echo htmlspecialchars($task['username']); ?></span>
+                                    </div>
+                                <?php endif; ?>
                             </div>
-                        </div>
-                    </div>
+                        <?php endif; ?>
+                    <?php endforeach; ?>
                 </div>
             </div>
 
-            <!-- Review Needed -->
+            <!-- In Progress -->
             <div class="bg-white rounded-lg shadow-lg p-4 w-[350px]" ondrop="drop(event)" ondragover="allowDrop(event)"
-                id="review">
+                id="in-progress">
                 <div class="flex items-center justify-between mb-4">
                     <h2 class="text-lg font-semibold text-gray-700">In Progress</h2>
                     <span class="bg-purple-100 text-purple-800 text-xs font-medium px-2.5 py-0.5 rounded"
-                        id="review-count">1</span>
+                        id="in-progress-count">0</span>
                 </div>
-                <div class="space-y-3" id="review-tasks">
-                    <div class="bg-purple-50 p-4 rounded-lg hover:shadow-md transition-all cursor-pointer"
-                        draggable="true" ondragstart="drag(event)" id="task3">
-                        <h3 class="font-medium text-gray-800">User Authentication</h3>
-                        <p class="text-sm text-gray-600 mt-2">Review authentication flow and security measures</p>
-                        <div class="flex justify-between items-center mt-3">
-                            <span class="text-xs text-gray-500">Due: Dec 18</span>
-                            <div class="space-x-2">
-                                <button class="text-blue-600 hover:text-blue-800" onclick="editTask('task3')">✎</button>
-                                <button class="text-red-600 hover:text-red-800" onclick="deleteTask('task3')">×</button>
+                <div class="space-y-3" id="in-progress-tasks">
+                    <?php foreach ($tasks as $task): ?>
+                        <?php if ($task['status'] === 'in_progress'): ?>
+                            <div class="bg-purple-50 p-4 rounded-lg hover:shadow-md transition-all cursor-pointer"
+                                draggable="true" ondragstart="drag(event)" id="task<?php echo $task['task_id']; ?>">
+                                <h3 class="font-medium text-gray-800"><?php echo htmlspecialchars($task['task_title']); ?></h3>
+                                <p class="text-sm text-gray-600 mt-2"><?php echo htmlspecialchars($task['task_description']); ?></p>
+                                <div class="flex justify-between items-center mt-3">
+                                    <span class="text-xs text-gray-500">Due: <?php echo $task['due_date']; ?></span>
+                                    <div class="space-x-2">
+                                        <button class="text-blue-600 hover:text-blue-800"
+                                            onclick="editTask(<?php echo $task['task_id']; ?>)">✎</button>
+                                        <button class="text-red-600 hover:text-red-800"
+                                            onclick="deleteTask(<?php echo $task['task_id']; ?>)">×</button>
+                                    </div>
+                                </div>
+                                <?php if ($task['username']): ?>
+                                    <div class="mt-2">
+                                        <span class="text-xs text-gray-500">Assigned to: <?php echo htmlspecialchars($task['username']); ?></span>
+                                    </div>
+                                <?php endif; ?>
                             </div>
-                        </div>
-                    </div>
+                        <?php endif; ?>
+                    <?php endforeach; ?>
                 </div>
             </div>
 
@@ -194,21 +331,32 @@
                 <div class="flex items-center justify-between mb-4">
                     <h2 class="text-lg font-semibold text-gray-700">Completed</h2>
                     <span class="bg-green-100 text-green-800 text-xs font-medium px-2.5 py-0.5 rounded"
-                        id="completed-count">1</span>
+                        id="completed-count">0</span>
                 </div>
                 <div class="space-y-3" id="completed-tasks">
-                    <div class="bg-green-50 p-4 rounded-lg hover:shadow-md transition-all cursor-pointer"
-                        draggable="true" ondragstart="drag(event)" id="task4">
-                        <h3 class="font-medium text-gray-800">Database Setup ✓</h3>
-                        <p class="text-sm text-gray-600 mt-2">Initialize and configure database schema</p>
-                        <div class="flex justify-between items-center mt-3">
-                            <span class="text-xs text-gray-500">Completed</span>
-                            <div class="space-x-2">
-                                <button class="text-blue-600 hover:text-blue-800" onclick="editTask('task4')">✎</button>
-                                <button class="text-red-600 hover:text-red-800" onclick="deleteTask('task4')">×</button>
+                    <?php foreach ($tasks as $task): ?>
+                        <?php if ($task['status'] === 'completed'): ?>
+                            <div class="bg-green-50 p-4 rounded-lg hover:shadow-md transition-all cursor-pointer"
+                                draggable="true" ondragstart="drag(event)" id="task<?php echo $task['task_id']; ?>">
+                                <h3 class="font-medium text-gray-800"><?php echo htmlspecialchars($task['task_title']); ?></h3>
+                                <p class="text-sm text-gray-600 mt-2"><?php echo htmlspecialchars($task['task_description']); ?></p>
+                                <div class="flex justify-between items-center mt-3">
+                                    <span class="text-xs text-gray-500">Completed</span>
+                                    <div class="space-x-2">
+                                        <button class="text-blue-600 hover:text-blue-800"
+                                            onclick="editTask(<?php echo $task['task_id']; ?>)">✎</button>
+                                        <button class="text-red-600 hover:text-red-800"
+                                            onclick="deleteTask(<?php echo $task['task_id']; ?>)">×</button>
+                                    </div>
+                                </div>
+                                <?php if ($task['username']): ?>
+                                    <div class="mt-2">
+                                        <span class="text-xs text-gray-500">Assigned to: <?php echo htmlspecialchars($task['username']); ?></span>
+                                    </div>
+                                <?php endif; ?>
                             </div>
-                        </div>
-                    </div>
+                        <?php endif; ?>
+                    <?php endforeach; ?>
                 </div>
             </div>
         </div>
@@ -219,36 +367,50 @@
         <div class="relative top-20 mx-auto p-6 border w-96 shadow-lg rounded-md bg-white">
             <!-- Modal Header -->
             <div class="mb-6">
-                <h3 class="text-xl font-semibold text-gray-900">Add New Task to Backlog</h3>
+                <h3 class="text-xl font-semibold text-gray-900">Add New Task</h3>
                 <p class="text-sm text-gray-500">Fill in the details to create a new task.</p>
             </div>
             <!-- Modal Form -->
-            <form id="addTaskForm" class="space-y-4">
+            <form method="POST" class="space-y-4">
                 <!-- Task Title -->
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Title</label>
-                    <input type="text" id="taskTitle"
+                    <input type="text" name="task_title"
                         class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
-                        placeholder="Enter task title">
+                        placeholder="Enter task title" required>
                 </div>
                 <!-- Task Description -->
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                    <textarea id="taskDescription"
+                    <textarea name="task_description"
                         class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
-                        rows="3" placeholder="Enter task description"></textarea>
+                        rows="3" placeholder="Enter task description" required></textarea>
                 </div>
                 <!-- Task Due Date -->
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Due Date</label>
-                    <input type="date" id="taskDueDate"
+                    <input type="date" name="due_date"
+                        class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
+                        required>
+                </div>
+                <!-- Assign Task to Member -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Assign to</label>
+                    <select name="assigned_to"
                         class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200">
+                        <option value="">Unassigned</option>
+                        <?php foreach ($members as $member): ?>
+                            <option value="<?php echo $member['user_id']; ?>">
+                                <?php echo htmlspecialchars($member['username']); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
                 </div>
                 <!-- Modal Actions -->
                 <div class="flex justify-end space-x-3">
                     <button type="button" onclick="closeAddTaskModal()"
                         class="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 transition duration-200">Cancel</button>
-                    <button type="button" onclick="addTask()"
+                    <button type="submit" name="add_task"
                         class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200">Add
                         Task</button>
                 </div>
@@ -278,9 +440,9 @@
         }
 
         function updateCounts() {
-            document.getElementById("readiness-count").textContent = document.getElementById("readiness-tasks").children.length;
-            document.getElementById("progress-count").textContent = document.getElementById("progress-tasks").children.length;
-            document.getElementById("review-count").textContent = document.getElementById("review-tasks").children.length;
+            document.getElementById("backlog-count").textContent = document.getElementById("backlog-tasks").children.length;
+            document.getElementById("todo-count").textContent = document.getElementById("todo-tasks").children.length;
+            document.getElementById("in-progress-count").textContent = document.getElementById("in-progress-tasks").children.length;
             document.getElementById("completed-count").textContent = document.getElementById("completed-tasks").children.length;
         }
 
@@ -292,47 +454,11 @@
             document.getElementById("addTaskModal").classList.add("hidden");
         }
 
-        function addTask() {
-            const title = document.getElementById("taskTitle").value;
-            const description = document.getElementById("taskDescription").value;
-            const dueDate = document.getElementById("taskDueDate").value;
-
-            if (!title || !description || !dueDate) {
-                alert("Please fill in all fields");
-                return;
+        function loadProjectTasks() {
+            const projectId = document.getElementById("projectSelect").value;
+            if (projectId) {
+                window.location.href = `addtask.php?project_id=${projectId}`;
             }
-
-            const taskId = "task" + Date.now();
-            const taskHTML = `
-                <div class="bg-gray-50 p-4 rounded-lg hover:shadow-md transition-all cursor-pointer" draggable="true" ondragstart="drag(event)" id="${taskId}">
-                    <h3 class="font-medium text-gray-800">${title}</h3>
-                    <p class="text-sm text-gray-600 mt-2">${description}</p>
-                    <div class="flex justify-between items-center mt-3">
-                        <span class="text-xs text-gray-500">Due: ${dueDate}</span>
-                        <div class="space-x-2">
-                            <button class="text-blue-600 hover:text-blue-800" onclick="editTask('${taskId}')">✎</button>
-                            <button class="text-red-600 hover:text-red-800" onclick="deleteTask('${taskId}')">×</button>
-                        </div>
-                    </div>
-                </div>
-            `;
-
-            document.getElementById("readiness-tasks").insertAdjacentHTML("beforeend", taskHTML);
-            updateCounts();
-            closeAddTaskModal();
-            document.getElementById("addTaskForm").reset();
-        }
-
-        function deleteTask(taskId) {
-            if (confirm("Are you sure you want to delete this task?")) {
-                document.getElementById(taskId).remove();
-                updateCounts();
-            }
-        }
-
-        function editTask(taskId) {
-            // Implement edit functionality
-            alert("Edit functionality to be implemented");
         }
     </script>
 </body>
