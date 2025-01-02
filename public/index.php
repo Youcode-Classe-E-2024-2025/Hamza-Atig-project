@@ -70,7 +70,7 @@ if ($_SESSION['role'] !== 'Chef') {
                     </a>
                 </li>
                 <li>
-                    <a href="#"
+                    <a href="inbox.php"
                         class="flex items-center p-2 text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 group">
                         <svg class="flex-shrink-0 w-5 h-5 text-gray-500 transition duration-75 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-white"
                             aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor"
@@ -80,7 +80,25 @@ if ($_SESSION['role'] !== 'Chef') {
                         </svg>
                         <span class="flex-1 ms-3 whitespace-nowrap">Inbox</span>
                         <span
-                            class="inline-flex items-center justify-center w-3 h-3 p-3 ms-3 text-sm font-medium text-blue-800 bg-blue-100 rounded-full dark:bg-blue-900 dark:text-blue-300">3</span>
+                            class="inline-flex items-center justify-center w-3 h-3 p-3 ms-3 text-sm font-medium text-blue-800 bg-blue-100 rounded-full dark:bg-blue-900 dark:text-blue-300"><?php
+                            include '../config/database.php';
+                            $receiver_id = $_SESSION['user_id'];
+                            $query = "SELECT COUNT(*) AS numberOfRequests 
+                               FROM join_requests 
+                               WHERE receiver_id = ? AND status = 'pending'";
+                            $stmt = $conn->prepare($query);
+                            if (!$stmt) {
+                                die("Prepare failed: " . $conn->error);
+                            }
+
+                            $stmt->bind_param("i", $receiver_id);
+                            $stmt->execute();
+                            $result = $stmt->get_result();
+                            $row = $result->fetch_assoc();
+                            $numberOfRequests = $row['numberOfRequests'];
+
+                            $stmt->close();
+                            echo $numberOfRequests; ?></span>
                     </a>
                 </li>
                 <li>
