@@ -8,7 +8,7 @@
     <link rel="stylesheet" href="../assets/css/tailwind.css">
 </head>
 
-<body class="bg-gray-100 min-h-screen p-6">
+<body class="bg-gray-900 min-h-screen p-6">
     <button data-drawer-target="default-sidebar" data-drawer-toggle="default-sidebar" aria-controls="default-sidebar"
         type="button"
         class="inline-flex items-center p-2 mt-2 ms-3 text-sm text-gray-500 rounded-lg sm:hidden hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-200 dark:text-gray-400 dark:hover:bg-gray-700 dark:focus:ring-gray-600">
@@ -109,7 +109,7 @@
 
     <div class="w-[80%] left-[18%] absolute">
         <div class="flex justify-between items-center mb-8">
-            <h1 class="text-3xl font-bold text-gray-800">Project Title</h1>
+            <h1 class="text-3xl font-bold text-gray-100">Project Title</h1>
             <button onclick="openAddTaskModal()"
                 class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg">Add Task</button>
         </div>
@@ -119,7 +119,7 @@
             <div class="bg-white rounded-lg shadow-lg p-4 w-[350px]" ondrop="drop(event)" ondragover="allowDrop(event)"
                 id="task-readiness">
                 <div class="flex items-center justify-between mb-4">
-                    <h2 class="text-lg font-semibold text-gray-700">Task Readiness</h2>
+                    <h2 class="text-lg font-semibold text-gray-700">backlog</h2>
                     <span class="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded"
                         id="readiness-count">1</span>
                 </div>
@@ -144,7 +144,7 @@
             <div class="bg-white rounded-lg shadow-lg p-4 w-[350px]" ondrop="drop(event)" ondragover="allowDrop(event)"
                 id="in-progress">
                 <div class="flex items-center justify-between mb-4">
-                    <h2 class="text-lg font-semibold text-gray-700">In Progress</h2>
+                    <h2 class="text-lg font-semibold text-gray-700">ToDo</h2>
                     <span class="bg-yellow-100 text-yellow-800 text-xs font-medium px-2.5 py-0.5 rounded"
                         id="progress-count">1</span>
                 </div>
@@ -168,7 +168,7 @@
             <div class="bg-white rounded-lg shadow-lg p-4 w-[350px]" ondrop="drop(event)" ondragover="allowDrop(event)"
                 id="review">
                 <div class="flex items-center justify-between mb-4">
-                    <h2 class="text-lg font-semibold text-gray-700">Review Needed</h2>
+                    <h2 class="text-lg font-semibold text-gray-700">In Progress</h2>
                     <span class="bg-purple-100 text-purple-800 text-xs font-medium px-2.5 py-0.5 rounded"
                         id="review-count">1</span>
                 </div>
@@ -194,7 +194,7 @@
                 <div class="flex items-center justify-between mb-4">
                     <h2 class="text-lg font-semibold text-gray-700">Completed</h2>
                     <span class="bg-green-100 text-green-800 text-xs font-medium px-2.5 py-0.5 rounded"
-                        id="completed-count">4</span>
+                        id="completed-count">1</span>
                 </div>
                 <div class="space-y-3" id="completed-tasks">
                     <div class="bg-green-50 p-4 rounded-lg hover:shadow-md transition-all cursor-pointer"
@@ -216,29 +216,41 @@
 
     <!-- Add Task Modal -->
     <div id="addTaskModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full">
-        <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-            <h3 class="text-lg font-medium text-gray-900 mb-4">Add New Task</h3>
+        <div class="relative top-20 mx-auto p-6 border w-96 shadow-lg rounded-md bg-white">
+            <!-- Modal Header -->
+            <div class="mb-6">
+                <h3 class="text-xl font-semibold text-gray-900">Add New Task to Backlog</h3>
+                <p class="text-sm text-gray-500">Fill in the details to create a new task.</p>
+            </div>
+            <!-- Modal Form -->
             <form id="addTaskForm" class="space-y-4">
+                <!-- Task Title -->
                 <div>
-                    <label class="block text-sm font-medium text-gray-700">Title</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Title</label>
                     <input type="text" id="taskTitle"
-                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                        class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
+                        placeholder="Enter task title">
                 </div>
+                <!-- Task Description -->
                 <div>
-                    <label class="block text-sm font-medium text-gray-700">Description</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
                     <textarea id="taskDescription"
-                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"></textarea>
+                        class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
+                        rows="3" placeholder="Enter task description"></textarea>
                 </div>
+                <!-- Task Due Date -->
                 <div>
-                    <label class="block text-sm font-medium text-gray-700">Due Date</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Due Date</label>
                     <input type="date" id="taskDueDate"
-                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                        class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200">
                 </div>
-                <div class="flex justify-end space-x-2">
+                <!-- Modal Actions -->
+                <div class="flex justify-end space-x-3">
                     <button type="button" onclick="closeAddTaskModal()"
-                        class="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">Cancel</button>
+                        class="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 transition duration-200">Cancel</button>
                     <button type="button" onclick="addTask()"
-                        class="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600">Add Task</button>
+                        class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200">Add
+                        Task</button>
                 </div>
             </form>
         </div>
