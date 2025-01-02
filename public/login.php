@@ -1,12 +1,12 @@
 <?php
-include '../config/database.php';
+include 'config/database.php';
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $username = trim($_POST['username']);
-    $password = trim($_POST['password']);
+    $username = trim(htmlspecialchars($_POST['username']));
+    $password = trim(htmlspecialchars($_POST['password']));
 
     if (empty($username) || empty($password)) {
-        die("Please fill all required fields.");
+        die("<div class='bg-red-900 border border-red-700 text-red-300 px-4 py-3 rounded relative mb-4 animate-fade-in' role='alert'>Please fill all required fields.</div>");
     }
 
     $sql = "SELECT user_id, username, password_hash, role FROM users WHERE username = ?";
@@ -21,8 +21,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         if (password_verify($password, $user['password_hash'])) {
             session_start();
             $_SESSION['user_id'] = $user['user_id'];
-            $_SESSION['username'] = $user['username'];
-            $_SESSION['role'] = $user['role'];
+            $_SESSION['username'] = htmlspecialchars($user['username']);
+            $_SESSION['role'] = htmlspecialchars($user['role']);
 
             if ($user['role'] === 'Chef') {
                 header("Location: index.php");
@@ -72,6 +72,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     Login
                 </button>
             </div>
+
+            <a href="signup.php">signup</a>
         </form>
     </div>
 </body>
