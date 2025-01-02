@@ -24,7 +24,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $stmt->bind_param("ssssss", $username, $email, $password_hash, $role, $team_name, $professional_domain);
 
     if ($stmt->execute()) {
-        echo "<div class='bg-green-900 border border-green-700 text-green-300 px-4 py-3 rounded relative mb-4 animate-fade-in' role='alert'>Signup successful!</div>";
+        echo "<div class='bg-green-900 border border-green-700 text-green-300 px-4 py-3 rounded mb-4 animate-fade-in absolute left-0 top-4 ' role='alert'>Signup successful!</div>";
     } else {
         echo "<div class='bg-red-900 border border-red-700 text-red-300 px-4 py-3 rounded relative mb-4 animate-fade-in' role='alert'>Error: " . $stmt->error . "</div>";
     }
@@ -138,6 +138,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     Signup
                 </button>
             </div>
+            <a href="login.php" class="mt-4 block text-center text-sm font-medium text-gray-300 hover:text-blue-500 transition-all duration-300">Already have an account? Login</a>
         </form>
     </div>
 </body>

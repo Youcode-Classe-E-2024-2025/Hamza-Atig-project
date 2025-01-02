@@ -1,5 +1,5 @@
 <?php
-include 'config/database.php';
+include '../config/database.php';
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $username = trim(htmlspecialchars($_POST['username']));
@@ -72,8 +72,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     Login
                 </button>
             </div>
-
-            <a href="signup.php">signup</a>
+            <a href="signup.php" class="block text-center text-sm font-medium text-gray-300 hover:text-blue-500 transition-all duration-300">signup</a>
         </form>
     </div>
 </body>
