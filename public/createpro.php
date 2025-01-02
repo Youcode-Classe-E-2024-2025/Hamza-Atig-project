@@ -123,174 +123,151 @@
             <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
             <div
                 class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-3xl sm:w-full">
-                <div class="bg-white px-6 pt-5 pb-4 sm:p-8">
-                    <div class="sm:flex sm:items-start">
-                        <div class="w-full">
-                            <h3 class="text-2xl font-semibold text-gray-900 mb-6" id="modal-title">Create Project</h3>
-                            <div class="mb-6">
-                                <label for="project-name" class="block text-sm font-medium text-gray-700 mb-2">Project
-                                    Name</label>
-                                <input type="text" id="project-name"
-                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
-                                    placeholder="Enter project name" />
-                            </div>
-                            <div class="mb-6">
-                                <label for="project-description"
-                                    class="block text-sm font-medium text-gray-700 mb-2">Project Description</label>
-                                <textarea id="project-description"
-                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
-                                    rows="4" placeholder="Enter project description"></textarea>
-                            </div>
-                            <div class="mb-6">
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Select Team Members</label>
-                                <div class="overflow-x-auto">
-                                    <table class="min-w-full bg-white border border-gray-300 rounded-lg">
-                                        <thead>
-                                            <tr class="bg-gray-100">
-                                                <th class="px-4 py-2 text-left text-sm font-medium text-gray-700">Name
-                                                </th>
-                                                <th class="px-4 py-2 text-left text-sm font-medium text-gray-700">Role
-                                                </th>
-                                                <th class="px-4 py-2 text-left text-sm font-medium text-gray-700">Action
-                                                </th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="team-members-table">
-                                            <tr data-id="1" class="border-b border-gray-200 hover:bg-gray-50">
-                                                <td class="px-4 py-2 text-sm text-gray-700">John Doe</td>
-                                                <td class="px-4 py-2 text-sm text-gray-700">Developer</td>
-                                                <td class="px-4 py-2 text-sm">
-                                                    <button
-                                                        class="px-3 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200"
-                                                        onclick="addMember('1', 'John Doe')">Add</button>
-                                                </td>
-                                            </tr>
-                                            <tr data-id="2" class="border-b border-gray-200 hover:bg-gray-50">
-                                                <td class="px-4 py-2 text-sm text-gray-700">Jane Smith</td>
-                                                <td class="px-4 py-2 text-sm text-gray-700">Tester</td>
-                                                <td class="px-4 py-2 text-sm">
-                                                    <button
-                                                        class="px-3 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200"
-                                                        onclick="addMember('2', 'Jane Smith')">Add</button>
-                                                </td>
-                                            </tr>
-                                            <tr data-id="3" class="border-b border-gray-200 hover:bg-gray-50">
-                                                <td class="px-4 py-2 text-sm text-gray-700">Michael Brown</td>
-                                                <td class="px-4 py-2 text-sm text-gray-700">Designer</td>
-                                                <td class="px-4 py-2 text-sm">
-                                                    <button
-                                                        class="px-3 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200"
-                                                        onclick="addMember('3', 'Michael Brown')">Add</button>
-                                                </td>
-                                            </tr>
-                                            <tr data-id="4" class="border-b border-gray-200 hover:bg-gray-50">
-                                                <td class="px-4 py-2 text-sm text-gray-700">Emily Davis</td>
-                                                <td class="px-4 py-2 text-sm text-gray-700">WebSite Manager</td>
-                                                <td class="px-4 py-2 text-sm">
-                                                    <button
-                                                        class="px-3 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200"
-                                                        onclick="addMember('4', 'Emily Davis')">Add</button>
-                                                </td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
+                <form action="createpro.php" method="POST">
+                    <div class="bg-white px-6 pt-5 pb-4 sm:p-8">
+                        <div class="sm:flex sm:items-start">
+                            <div class="w-full">
+                                <h3 class="text-2xl font-semibold text-gray-900 mb-6" id="modal-title">Create Project
+                                </h3>
+                                <div class="mb-6">
+                                    <label for="project-name"
+                                        class="block text-sm font-medium text-gray-700 mb-2">Project Name</label>
+                                    <input type="text" id="project-name" name="project_name"
+                                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
+                                        placeholder="Enter project name" required />
                                 </div>
-                            </div>
-                            <div class="mb-8">
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Selected Team
-                                    Members</label>
-                                <div id="selected-members" class="flex flex-wrap gap-2">
+                                <div class="mb-6">
+                                    <label for="project-description"
+                                        class="block text-sm font-medium text-gray-700 mb-2">Project Description</label>
+                                    <textarea id="project-description" name="project_description"
+                                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
+                                        rows="4" placeholder="Enter project description" required></textarea>
                                 </div>
-                            </div>
-                            <div class="flex justify-end space-x-4">
-                                <button type="button"
-                                    class="px-6 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 transition duration-200"
-                                    onclick="document.querySelector('.create-project-modal').style.display = 'none'">Cancel</button>
-                                <button type="button"
-                                    class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200">Create</button>
+                                <div class="mb-6">
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Select Team
+                                        Members</label>
+                                    <div class="overflow-x-auto">
+                                        <table class="min-w-full bg-white border border-gray-300 rounded-lg">
+                                            <thead>
+                                                <tr class="bg-gray-100">
+                                                    <th class="px-4 py-2 text-left text-sm font-medium text-gray-700">
+                                                        Name</th>
+                                                    <th class="px-4 py-2 text-left text-sm font-medium text-gray-700">
+                                                        Role</th>
+                                                    <th class="px-4 py-2 text-left text-sm font-medium text-gray-700">
+                                                        Action</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="team-members-table">
+                                                <!-- Team members rows here -->
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                                <div class="mb-8">
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Selected Team
+                                        Members</label>
+                                    <div id="selected-members" class="flex flex-wrap gap-2">
+                                    </div>
+                                </div>
+                                <div class="flex justify-end space-x-4">
+                                    <button type="button"
+                                        class="px-6 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 transition duration-200"
+                                        onclick="document.querySelector('.create-project-modal').style.display = 'none'">Cancel</button>
+                                    <button type="submit"
+                                        class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200">Create</button>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
+                </form>
             </div>
         </div>
     </div>
+    <?php
+    include '../config/database.php';
+
+    $query = "SELECT project_name, created_at FROM projects ORDER BY created_at DESC";
+    $result = $conn->query($query);
+
+    if ($result->num_rows > 0): ?>
+        <ul class="bg-white rounded-lg shadow divide-y divide-gray-200 w-[80%] top-[13%] left-[18%] absolute">
+            <?php while ($row = $result->fetch_assoc()): ?>
+                <li class="px-6 py-4">
+                    <div class="flex justify-between">
+                        <a href="./addtask.php"
+                            class="font-semibold text-lg"><?php echo htmlspecialchars($row['project_name']); ?></a>
+                        <span class="text-gray-500 text-xs">
+                            <?php
+                            $created_at = new DateTime($row['created_at']);
+                            $now = new DateTime();
+                            $interval = $created_at->diff($now);
+
+                            if ($interval->d > 0) {
+                                echo "Started " . $interval->d . " day(s) ago";
+                            } else if ($interval->h > 0) {
+                                echo "Started " . $interval->h . " hour(s) ago";
+                            } else {
+                                echo "Started just now";
+                            }
+                            ?>
+                        </span>
+                    </div>
+                    <p class="text-gray-700">This project is currently in progress.</p>
+                </li>
+            <?php endwhile; ?>
+        </ul>
+    <?php else: ?>
+        <p class="text-center text-gray-500">No projects available.</p>
+    <?php endif;
+
+    $conn->close();
+    ?>
 
     <script>
-        const colors = ['bg-blue-100', 'bg-green-100', 'bg-yellow-100', 'bg-pink-100', 'bg-purple-100'];
-        function addMember(id, name) {
-            const selectedMembersContainer = document.getElementById('selected-members');
+        document.addEventListener('DOMContentLoaded', function () {
+            const colors = ['bg-blue-100', 'bg-green-100', 'bg-yellow-100', 'bg-pink-100', 'bg-purple-100'];
+            let selectedMembers = [];
 
-            if (document.querySelector(`#selected-members [data-id="${id}"]`)) return;
+            function addMember(id, name, job) {
+                const selectedMembersContainer = document.getElementById('selected-members');
 
-            const chip = document.createElement('div');
-            const color = colors[selectedMembersContainer.children.length % colors.length];
-            chip.className = `flex items-center ${color} text-gray-700 px-3 py-1 rounded-full text-sm`;
-            chip.setAttribute('data-id', id);
-            chip.innerHTML = `
-            ${name}
-            <button onclick="removeMember('${id}', '${name}')" class="ml-2 text-gray-700 hover:text-gray-900 focus:outline-none">
+                if (selectedMembers.some(member => member.id === id)) return;
+
+                const chip = document.createElement('div');
+                const color = colors[selectedMembersContainer.children.length % colors.length];
+                chip.className = `flex items-center ${color} text-gray-700 px-3 py-1 rounded-full text-sm`;
+                chip.setAttribute('data-id', id);
+                chip.innerHTML = `
+            ${name} (${job})
+            <button onclick="removeMember('${id}')" class="ml-2 text-gray-700 hover:text-gray-900 focus:outline-none">
                 &times;
             </button>
         `;
-            selectedMembersContainer.appendChild(chip);
-            const row = document.querySelector(`#team-members-table tr[data-id="${id}"]`);
-            row.style.display = 'none';
-        }
+                selectedMembersContainer.appendChild(chip);
 
-        function removeMember(id, name) {
-            const chip = document.querySelector(`#selected-members [data-id="${id}"]`);
-            chip.remove();
+                selectedMembers.push({ id, name, job });
 
-            const row = document.querySelector(`#team-members-table tr[data-id="${id}"]`);
-            row.style.display = 'table-row';
-        }
-    </script>
+                const row = document.querySelector(`#team-members-table tr[data-id="${id}"]`);
+                if (row) {
+                    row.style.display = 'none';
+                }
+            }
 
-    <script>
-        document.getElementById('add-member').addEventListener('click', function () {
-            const select = document.getElementById('project-team');
-            const selectedMembersContainer = document.getElementById('selected-members');
-            const selectedOption = select.options[select.selectedIndex];
-            if (!selectedOption.value) return;
-            const chip = document.createElement('div');
-            chip.className = 'flex items-center bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-sm';
-            chip.innerHTML = `
-            ${selectedOption.text}
-            <button onclick="this.parentElement.remove()" class="ml-2 text-blue-700 hover:text-blue-900 focus:outline-none">
-                &times;
-            </button>
-        `;
-            selectedMembersContainer.appendChild(chip);
-            select.selectedIndex = 0;
+            function removeMember(id) {
+                const chip = document.querySelector(`#selected-members [data-id="${id}"]`);
+                if (chip) {
+                    chip.remove();
+                }
+
+                selectedMembers = selectedMembers.filter(member => member.id !== id);
+                const row = document.querySelector(`#team-members-table tr[data-id="${id}"]`);
+                if (row) {
+                    row.style.display = 'table-row';
+                }
+            }
         });
     </script>
-    <ul class="bg-white rounded-lg shadow divide-y divide-gray-200 w-[80%] top-[13%] left-[18%] absolute">
-        <li class="px-6 py-4">
-            <div class="flex justify-between">
-                <a href="./addtask.php" class="font-semibold text-lg">Virtual Reality Project</a>
-                <span class="text-gray-500 text-xs">Started 1 week ago</span>
-            </div>
-            <p class="text-gray-700">This project is about creating a 3D website using A-Frame. It is currently in
-                progress.</p>
-        </li>
-        <li class="px-6 py-4">
-            <div class="flex justify-between">
-                <a href="./addtask.php" class="font-semibold text-lg">AI Project</a>
-                <span class="text-gray-500 text-xs">Started 2 weeks ago</span>
-            </div>
-            <p class="text-gray-700">This project is about creating an AI that can generate code based on human
-                instructions. It is currently in progress.</p>
-        </li>
-        <li class="px-6 py-4">
-            <div class="flex justify-between">
-                <a href="./addtask.php" class="font-semibold text-lg">Game Development</a>
-                <span class="text-gray-500 text-xs">Started 3 weeks ago</span>
-            </div>
-            <p class="text-gray-700">This project is about creating a game using Unity. It is currently in progress.</p>
-        </li>
-    </ul>
-
 </body>
 
 </html>
