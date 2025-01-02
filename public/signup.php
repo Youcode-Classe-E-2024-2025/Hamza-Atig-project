@@ -36,6 +36,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -74,8 +75,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         }
     </script>
 </head>
+
 <body class="bg-gray-900 text-gray-100 flex items-center justify-center min-h-screen">
-    <div class="bg-gray-800 p-8 rounded-lg shadow-lg w-full max-w-md transform transition-all duration-300 hover:scale-105">
+    <div
+        class="bg-gray-800 p-8 rounded-lg shadow-lg w-full max-w-md transform transition-all duration-300 hover:scale-105">
         <h1 class="text-2xl font-bold mb-6 text-center text-blue-400 animate-bounce">Signup</h1>
         <form method="POST" action="signup.php" class="space-y-4">
             <div>
@@ -113,7 +116,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             </div>
 
             <div id="professional_domain_div" class="hidden">
-                <label for="professional_domain" class="block text-sm font-medium text-gray-300">Professional Domain</label>
+                <label for="professional_domain" class="block text-sm font-medium text-gray-300">Professional
+                    Domain</label>
                 <select id="professional_domain" name="professional_domain" onchange="toggleCustomDomain()"
                     class="mt-1 block w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-gray-100">
                     <option value="Web Design">Web Design</option>
@@ -127,7 +131,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             </div>
 
             <div id="custom_domain_div" class="hidden">
-                <label for="custom_professional_domain" class="block text-sm font-medium text-gray-300">Specify Your Domain</label>
+                <label for="custom_professional_domain" class="block text-sm font-medium text-gray-300">Specify Your
+                    Domain</label>
                 <input type="text" id="custom_professional_domain" name="custom_professional_domain"
                     class="mt-1 block w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-gray-100 placeholder-gray-400">
             </div>
@@ -141,7 +146,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             <a href="login.php"
                 class="mt-4 block text-center text-sm font-medium text-gray-300 hover:text-blue-500 transition-all duration-300">Already
                 have an account? Login</a>
+            <a href="geust.php"
+                class="block text-center text-sm font-medium text-gray-300 hover:text-blue-500 transition-all duration-300">Go
+                to guest page</a>
         </form>
     </div>
 </body>
+
 </html>

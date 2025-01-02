@@ -36,6 +36,10 @@ $conn->close();
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-100 font-sans">
+    <div class="flex justify-end px-4 py-2">
+      <a href="login.php" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-full mr-2">Login</a>
+      <a href="signup.php" class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-full">Signup</a>
+    </div>
 
   <div class="container mx-auto px-4 py-8">
     <h1 class="text-3xl font-bold text-center text-gray-800 mb-8">Public Projects</h1>

@@ -73,6 +73,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 </button>
             </div>
             <a href="signup.php" class="block text-center text-sm font-medium text-gray-300 hover:text-blue-500 transition-all duration-300">signup</a>
+            <a href="geust.php" class="block text-center text-sm font-medium text-gray-300 hover:text-blue-500 transition-all duration-300">Go to guest page</a>
         </form>
     </div>
 </body>
