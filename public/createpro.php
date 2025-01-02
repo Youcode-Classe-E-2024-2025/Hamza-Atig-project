@@ -153,12 +153,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                         </svg>
                         <span class="flex-1 ms-3 whitespace-nowrap">Inbox</span>
                         <span
-                            class="inline-flex items-center justify-center w-3 h-3 p-3 ms-3 text-sm font-medium text-blue-800 bg-blue-100 rounded-full dark:bg-blue-900 dark:text-blue-300"><?php
+                            class="inline-flex items-center justify-center w-3 h-3 p-3 ms-3 text-sm font-medium text-blue-800 bg-blue-100 rounded-full dark:bg-blue-900 dark:text-blue-300">
+                            <?php
                             $receiver_id = $_SESSION['user_id'];
                             $query = "SELECT COUNT(*) AS numberOfRequests 
-                               FROM join_requests 
-                               WHERE receiver_id = ? AND status = 'pending'";
-                            $stmt = $conn->prepare($query);
+                                FROM join_requests 
+                                WHERE receiver_id = ? AND status = 'pending'";
+                            $stmt = $conn->prepare($query); 
                             if (!$stmt) {
                                 die("Prepare failed: " . $conn->error);
                             }
@@ -170,7 +171,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                             $numberOfRequests = $row['numberOfRequests'];
 
                             $stmt->close();
-                            echo $numberOfRequests; ?></span>
+                            $conn->close();
+                            
+                            echo $numberOfRequests;
+                            ?>
+                        </span>
                     </a>
                 </li>
                 <li>
