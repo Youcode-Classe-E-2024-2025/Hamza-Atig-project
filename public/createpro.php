@@ -1,3 +1,91 @@
+<?php
+session_start();
+
+if (!isset($_SESSION['user_id'])) {
+    header("Location: login.php");
+    exit();
+}
+
+if ($_SESSION['role'] !== 'Chef') {
+    header("Location: member.php");
+    exit();
+}
+
+include '../config/database.php';
+
+// Fetch approved members for the logged-in Chef
+$sql = "SELECT u.user_id, u.username, u.role 
+        FROM users u
+        JOIN join_requests jr ON u.user_id = jr.user_id
+        WHERE jr.receiver_id = ? AND jr.status = 'approved'";
+$stmt = $conn->prepare($sql);
+if (!$stmt) {
+    die("Prepare failed: " . $conn->error);
+}
+
+$stmt->bind_param("i", $_SESSION['user_id']);
+$stmt->execute();
+$result = $stmt->get_result();
+$approvedMembers = [];
+if ($result->num_rows > 0) {
+    while ($row = $result->fetch_assoc()) {
+        $approvedMembers[] = $row;
+    }
+}
+
+if ($_SERVER["REQUEST_METHOD"] == "POST") {
+    $project_name = trim(htmlspecialchars($_POST['project_name']));
+    $description = trim(htmlspecialchars($_POST['project_description']));
+    $created_by = $_SESSION['user_id'];
+    $assigned_to = isset($_POST['assigned_to']) ? (int)$_POST['assigned_to'] : null;
+
+    if (empty($project_name) || empty($description)) {
+        die(json_encode(["status" => "error", "message" => "Please fill all required fields."]));
+    }
+
+    if ($assigned_to) {
+        $sql = "SELECT user_id FROM users WHERE user_id = ?";
+        $stmt = $conn->prepare($sql);
+        if (!$stmt) {
+            die("Prepare failed: " . $conn->error);
+        }
+        $stmt->bind_param("i", $assigned_to);
+        $stmt->execute();
+        $result = $stmt->get_result();
+
+        if ($result->num_rows === 0) {
+            die(json_encode(["status" => "error", "message" => "The assigned member does not exist."]));
+        }
+    }
+
+    $sql = "INSERT INTO projects (project_name, description, created_by, assigned_to) VALUES (?, ?, ?, ?)";
+    $stmt = $conn->prepare($sql);
+    if (!$stmt) {
+        die("Prepare failed: " . $conn->error);
+    }
+    $stmt->bind_param("ssii", $project_name, $description, $created_by, $assigned_to);
+
+    if ($stmt->execute()) {
+        echo json_encode(["status" => "success", "message" => "Project created successfully!"]);
+    } else {
+        echo json_encode(["status" => "error", "message" => "Error: " . $stmt->error]);
+    }
+
+    $stmt->close();
+    $conn->close();
+} else {
+    $sql = "SELECT user_id, username FROM users WHERE role = 'member'";
+    $result = $conn->query($sql);
+    $users = [];
+    if ($result->num_rows > 0) {
+        while ($row = $result->fetch_assoc()) {
+            $users[] = $row;
+        }
+    }
+}
+?>
+
+
 <!DOCTYPE html>
 <html lang="en">
 
@@ -111,11 +199,8 @@
         onclick="openCreateProjectModal()">
         Create Project
     </button>
-    <script>
-        function openCreateProjectModal() {
-            document.querySelector(".create-project-modal").style.display = "block";
-        }
-    </script>
+
+    <!-- Create Project Modal -->
     <div class="create-project-modal hidden fixed z-10 inset-0 overflow-y-auto" aria-labelledby="modal-title"
         role="dialog" aria-modal="true">
         <div class="flex items-center justify-center min-h-screen px-4 text-center sm:block sm:p-0">
@@ -159,7 +244,31 @@
                                                 </tr>
                                             </thead>
                                             <tbody id="team-members-table">
-                                                <!-- Team members rows here -->
+                                                <?php if (!empty($approvedMembers)): ?>
+                                                    <?php foreach ($approvedMembers as $member): ?>
+                                                        <tr data-id="<?php echo $member['user_id']; ?>"
+                                                            class="border-b border-gray-200 hover:bg-gray-50">
+                                                            <td class="px-4 py-2 text-sm text-gray-700">
+                                                                <?php echo htmlspecialchars($member['username']); ?>
+                                                            </td>
+                                                            <td class="px-4 py-2 text-sm text-gray-700">
+                                                                <?php echo htmlspecialchars($member['role']); ?>
+                                                            </td>
+                                                            <td class="px-4 py-2 text-sm">
+                                                                <button type="button"
+                                                                    class="px-3 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200"
+                                                                    onclick="addMember('<?php echo $member['user_id']; ?>', '<?php echo htmlspecialchars($member['username']); ?>', '<?php echo htmlspecialchars($member['role']); ?>')">
+                                                                    Add
+                                                                </button>
+                                                            </td>
+                                                        </tr>
+                                                    <?php endforeach; ?>
+                                                <?php else: ?>
+                                                    <tr>
+                                                        <td colspan="3" class="px-4 py-2 text-sm text-gray-700 text-center">
+                                                            No approved members found.</td>
+                                                    </tr>
+                                                <?php endif; ?>
                                             </tbody>
                                         </table>
                                     </div>
@@ -169,11 +278,13 @@
                                         Members</label>
                                     <div id="selected-members" class="flex flex-wrap gap-2">
                                     </div>
+                                    <!-- Hidden input for assigned_to -->
+                                    <input type="hidden" id="assigned_to" name="assigned_to" value="">
                                 </div>
                                 <div class="flex justify-end space-x-4">
                                     <button type="button"
                                         class="px-6 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 transition duration-200"
-                                        onclick="document.querySelector('.create-project-modal').style.display = 'none'">Cancel</button>
+                                        onclick="closeCreateProjectModal()">Cancel</button>
                                     <button type="submit"
                                         class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200">Create</button>
                                 </div>
@@ -184,89 +295,63 @@
             </div>
         </div>
     </div>
-    <?php
-    include '../config/database.php';
-
-    $query = "SELECT project_name, created_at FROM projects ORDER BY created_at DESC";
-    $result = $conn->query($query);
-
-    if ($result->num_rows > 0): ?>
-        <ul class="bg-white rounded-lg shadow divide-y divide-gray-200 w-[80%] top-[13%] left-[18%] absolute">
-            <?php while ($row = $result->fetch_assoc()): ?>
-                <li class="px-6 py-4">
-                    <div class="flex justify-between">
-                        <a href="./addtask.php"
-                            class="font-semibold text-lg"><?php echo htmlspecialchars($row['project_name']); ?></a>
-                        <span class="text-gray-500 text-xs">
-                            <?php
-                            $created_at = new DateTime($row['created_at']);
-                            $now = new DateTime();
-                            $interval = $created_at->diff($now);
-
-                            if ($interval->d > 0) {
-                                echo "Started " . $interval->d . " day(s) ago";
-                            } else if ($interval->h > 0) {
-                                echo "Started " . $interval->h . " hour(s) ago";
-                            } else {
-                                echo "Started just now";
-                            }
-                            ?>
-                        </span>
-                    </div>
-                    <p class="text-gray-700">This project is currently in progress.</p>
-                </li>
-            <?php endwhile; ?>
-        </ul>
-    <?php else: ?>
-        <p class="text-center text-gray-500">No projects available.</p>
-    <?php endif;
-
-    $conn->close();
-    ?>
 
     <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            const colors = ['bg-blue-100', 'bg-green-100', 'bg-yellow-100', 'bg-pink-100', 'bg-purple-100'];
-            let selectedMembers = [];
+        function openCreateProjectModal() {
+            document.querySelector(".create-project-modal").style.display = "block";
+        }
 
-            function addMember(id, name, job) {
-                const selectedMembersContainer = document.getElementById('selected-members');
+        function closeCreateProjectModal() {
+            document.querySelector(".create-project-modal").style.display = "none";
+        }
 
-                if (selectedMembers.some(member => member.id === id)) return;
+        let selectedMembers = [];
 
-                const chip = document.createElement('div');
-                const color = colors[selectedMembersContainer.children.length % colors.length];
-                chip.className = `flex items-center ${color} text-gray-700 px-3 py-1 rounded-full text-sm`;
-                chip.setAttribute('data-id', id);
-                chip.innerHTML = `
-            ${name} (${job})
-            <button onclick="removeMember('${id}')" class="ml-2 text-gray-700 hover:text-gray-900 focus:outline-none">
-                &times;
-            </button>
-        `;
-                selectedMembersContainer.appendChild(chip);
+        function addMember(id, name, role) {
+            if (selectedMembers.some(member => member.id === id)) return;
 
-                selectedMembers.push({ id, name, job });
+            const selectedMembersContainer = document.getElementById('selected-members');
+            const assignedToInput = document.getElementById('assigned_to');
 
-                const row = document.querySelector(`#team-members-table tr[data-id="${id}"]`);
-                if (row) {
-                    row.style.display = 'none';
-                }
+            const chip = document.createElement('div');
+            chip.className = 'flex items-center bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm';
+            chip.setAttribute('data-id', id);
+            chip.innerHTML = `
+        ${name} (${role})
+        <button type="button" onclick="removeMember('${id}')" class="ml-2 text-blue-800 hover:text-blue-900 focus:outline-none">
+            &times;
+        </button>
+    `;
+            selectedMembersContainer.appendChild(chip);
+
+            selectedMembers.push({ id, name, role });
+
+            assignedToInput.value = id;
+
+            const row = document.querySelector(`#team-members-table tr[data-id="${id}"]`);
+            if (row) {
+                row.style.display = 'none';
+            }
+        }
+
+        function removeMember(id) {
+            const chip = document.querySelector(`#selected-members [data-id="${id}"]`);
+            if (chip) {
+                chip.remove();
             }
 
-            function removeMember(id) {
-                const chip = document.querySelector(`#selected-members [data-id="${id}"]`);
-                if (chip) {
-                    chip.remove();
-                }
+            selectedMembers = selectedMembers.filter(member => member.id !== id);
 
-                selectedMembers = selectedMembers.filter(member => member.id !== id);
-                const row = document.querySelector(`#team-members-table tr[data-id="${id}"]`);
-                if (row) {
-                    row.style.display = 'table-row';
-                }
+            const assignedToInput = document.getElementById('assigned_to');
+            if (selectedMembers.length === 0) {
+                assignedToInput.value = '';
             }
-        });
+
+            const row = document.querySelector(`#team-members-table tr[data-id="${id}"]`);
+            if (row) {
+                row.style.display = 'table-row';
+            }
+        }
     </script>
 </body>
 

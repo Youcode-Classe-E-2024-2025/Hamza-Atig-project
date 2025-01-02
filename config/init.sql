@@ -7,7 +7,7 @@ CREATE TABLE users (
     password_hash VARCHAR(255) NOT NULL,
     role ENUM('Chef', 'member') DEFAULT 'member',
     team_name VARCHAR(100),
-    professional_domain VARCHAR(100);
+    professional_domain VARCHAR(100),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
