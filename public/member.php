@@ -118,6 +118,9 @@ $conn->close();
                 <a href="send_request.php" class="block text-gray-300 hover:text-white">Join Teams</a>
             </li>
             <li>
+                <a href="work.php" class="block text-gray-300 hover:text-white">start working</a>
+            </li>
+            <li>
                 <a href="logout.php" class="block text-gray-300 hover:text-white">Logout</a>
             </li>
         </ul>
