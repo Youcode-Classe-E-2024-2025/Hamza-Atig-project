@@ -25,7 +25,7 @@ if ($result->num_rows > 0) {
     }
 }
 
-$project_id = isset($_GET['project_id']) ? (int)$_GET['project_id'] : null;
+$project_id = isset($_GET['project_id']) ? (int) $_GET['project_id'] : null;
 $tasks = [];
 if ($project_id) {
     $query = "SELECT t.task_id, t.task_title, t.task_description, t.due_date, t.status, t.assigned_to, u.username 
@@ -68,11 +68,29 @@ if ($project_id) {
     }
 }
 
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_task'])) {
+    $task_id = (int)$_POST['task_id'];
+    $project_id = isset($_POST['project_id']) ? (int)$_POST['project_id'] : null;
+
+    $query = "DELETE FROM tasks WHERE task_id = ?";
+    $stmt = $conn->prepare($query);
+    if (!$stmt) {
+        die("Prepare failed: " . $conn->error);
+    }
+
+    $stmt->bind_param("i", $task_id);
+    if ($stmt->execute()) {
+        echo "success";
+    } else {
+        echo "Error: " . $stmt->error;
+    }
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_task'])) {
     $task_title = trim($_POST['task_title']);
     $task_description = trim($_POST['task_description']);
     $due_date = $_POST['due_date'];
-    $assigned_to = isset($_POST['assigned_to']) ? (int)$_POST['assigned_to'] : null;
+    $assigned_to = isset($_POST['assigned_to']) ? (int) $_POST['assigned_to'] : null;
 
     if (empty($task_title) || empty($task_description) || empty($due_date)) {
         die("Please fill in all required fields.");
@@ -210,8 +228,7 @@ $conn->close();
                 class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200">
                 <option value="">Choose a Project</option>
                 <?php foreach ($projects as $project): ?>
-                    <option value="<?php echo $project['project_id']; ?>"
-                        <?php echo ($project_id == $project['project_id']) ? 'selected' : ''; ?>>
+                    <option value="<?php echo $project['project_id']; ?>" <?php echo ($project_id == $project['project_id']) ? 'selected' : ''; ?>>
                         <?php echo htmlspecialchars($project['project_name']); ?>
                     </option>
                 <?php endforeach; ?>
@@ -234,7 +251,8 @@ $conn->close();
                             <div class="bg-gray-50 p-4 rounded-lg hover:shadow-md transition-all cursor-pointer"
                                 draggable="true" ondragstart="drag(event)" id="task<?php echo $task['task_id']; ?>">
                                 <h3 class="font-medium text-gray-800"><?php echo htmlspecialchars($task['task_title']); ?></h3>
-                                <p class="text-sm text-gray-600 mt-2"><?php echo htmlspecialchars($task['task_description']); ?></p>
+                                <p class="text-sm text-gray-600 mt-2"><?php echo htmlspecialchars($task['task_description']); ?>
+                                </p>
                                 <div class="flex justify-between items-center mt-3">
                                     <span class="text-xs text-gray-500">Due: <?php echo $task['due_date']; ?></span>
                                     <div class="space-x-2">
@@ -246,7 +264,8 @@ $conn->close();
                                 </div>
                                 <?php if ($task['username']): ?>
                                     <div class="mt-2">
-                                        <span class="text-xs text-gray-500">Assigned to: <?php echo htmlspecialchars($task['username']); ?></span>
+                                        <span class="text-xs text-gray-500">Assigned to:
+                                            <?php echo htmlspecialchars($task['username']); ?></span>
                                     </div>
                                 <?php endif; ?>
                             </div>
@@ -269,7 +288,8 @@ $conn->close();
                             <div class="bg-yellow-50 p-4 rounded-lg hover:shadow-md transition-all cursor-pointer"
                                 draggable="true" ondragstart="drag(event)" id="task<?php echo $task['task_id']; ?>">
                                 <h3 class="font-medium text-gray-800"><?php echo htmlspecialchars($task['task_title']); ?></h3>
-                                <p class="text-sm text-gray-600 mt-2"><?php echo htmlspecialchars($task['task_description']); ?></p>
+                                <p class="text-sm text-gray-600 mt-2"><?php echo htmlspecialchars($task['task_description']); ?>
+                                </p>
                                 <div class="flex justify-between items-center mt-3">
                                     <span class="text-xs text-gray-500">Due: <?php echo $task['due_date']; ?></span>
                                     <div class="space-x-2">
@@ -281,7 +301,8 @@ $conn->close();
                                 </div>
                                 <?php if ($task['username']): ?>
                                     <div class="mt-2">
-                                        <span class="text-xs text-gray-500">Assigned to: <?php echo htmlspecialchars($task['username']); ?></span>
+                                        <span class="text-xs text-gray-500">Assigned to:
+                                            <?php echo htmlspecialchars($task['username']); ?></span>
                                     </div>
                                 <?php endif; ?>
                             </div>
@@ -304,7 +325,8 @@ $conn->close();
                             <div class="bg-purple-50 p-4 rounded-lg hover:shadow-md transition-all cursor-pointer"
                                 draggable="true" ondragstart="drag(event)" id="task<?php echo $task['task_id']; ?>">
                                 <h3 class="font-medium text-gray-800"><?php echo htmlspecialchars($task['task_title']); ?></h3>
-                                <p class="text-sm text-gray-600 mt-2"><?php echo htmlspecialchars($task['task_description']); ?></p>
+                                <p class="text-sm text-gray-600 mt-2"><?php echo htmlspecialchars($task['task_description']); ?>
+                                </p>
                                 <div class="flex justify-between items-center mt-3">
                                     <span class="text-xs text-gray-500">Due: <?php echo $task['due_date']; ?></span>
                                     <div class="space-x-2">
@@ -316,7 +338,8 @@ $conn->close();
                                 </div>
                                 <?php if ($task['username']): ?>
                                     <div class="mt-2">
-                                        <span class="text-xs text-gray-500">Assigned to: <?php echo htmlspecialchars($task['username']); ?></span>
+                                        <span class="text-xs text-gray-500">Assigned to:
+                                            <?php echo htmlspecialchars($task['username']); ?></span>
                                     </div>
                                 <?php endif; ?>
                             </div>
@@ -339,7 +362,8 @@ $conn->close();
                             <div class="bg-green-50 p-4 rounded-lg hover:shadow-md transition-all cursor-pointer"
                                 draggable="true" ondragstart="drag(event)" id="task<?php echo $task['task_id']; ?>">
                                 <h3 class="font-medium text-gray-800"><?php echo htmlspecialchars($task['task_title']); ?></h3>
-                                <p class="text-sm text-gray-600 mt-2"><?php echo htmlspecialchars($task['task_description']); ?></p>
+                                <p class="text-sm text-gray-600 mt-2"><?php echo htmlspecialchars($task['task_description']); ?>
+                                </p>
                                 <div class="flex justify-between items-center mt-3">
                                     <span class="text-xs text-gray-500">Completed</span>
                                     <div class="space-x-2">
@@ -351,7 +375,8 @@ $conn->close();
                                 </div>
                                 <?php if ($task['username']): ?>
                                     <div class="mt-2">
-                                        <span class="text-xs text-gray-500">Assigned to: <?php echo htmlspecialchars($task['username']); ?></span>
+                                        <span class="text-xs text-gray-500">Assigned to:
+                                            <?php echo htmlspecialchars($task['username']); ?></span>
                                     </div>
                                 <?php endif; ?>
                             </div>
@@ -458,6 +483,29 @@ $conn->close();
             const projectId = document.getElementById("projectSelect").value;
             if (projectId) {
                 window.location.href = `addtask.php?project_id=${projectId}`;
+            }
+        }
+
+        function deleteTask(taskId) {
+            if (confirm("Are you sure you want to delete task #" + taskId + "?")) {
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = 'addtask.php';
+
+                const taskIdInput = document.createElement('input');
+                taskIdInput.type = 'hidden';
+                taskIdInput.name = 'task_id';
+                taskIdInput.value = taskId;
+                form.appendChild(taskIdInput);
+
+                const deleteTaskInput = document.createElement('input');
+                deleteTaskInput.type = 'hidden';
+                deleteTaskInput.name = 'delete_task';
+                deleteTaskInput.value = '1';
+                form.appendChild(deleteTaskInput);
+
+                document.body.appendChild(form);
+                form.submit();
             }
         }
     </script>
