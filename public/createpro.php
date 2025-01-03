@@ -13,7 +13,6 @@ if ($_SESSION['role'] !== 'Chef') {
 
 include '../config/database.php';
 
-// Fetch approved members for the logged-in Chef
 $sql = "SELECT u.user_id, u.username, u.role 
         FROM users u
         JOIN join_requests jr ON u.user_id = jr.user_id
@@ -38,10 +37,21 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $description = trim(htmlspecialchars($_POST['project_description']));
     $created_by = $_SESSION['user_id'];
     $assigned_to = isset($_POST['assigned_to']) ? (int) $_POST['assigned_to'] : null;
+    $status_input = trim(htmlspecialchars($_POST['status']));
 
     if (empty($project_name) || empty($description)) {
         die(json_encode(["status" => "error", "message" => "Please fill all required fields."]));
     }
+
+    if (!in_array($status_input, ['public', 'private'])) {
+        die(json_encode(["status" => "error", "message" => "Invalid status."]));
+    }
+
+    $status_map = [
+        'public' => 1,
+        'private' => 0,
+    ];
+    $status = $status_map[$status_input];
 
     if ($assigned_to) {
         $sql = "SELECT user_id FROM users WHERE user_id = ?";
@@ -58,12 +68,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         }
     }
 
-    $sql = "INSERT INTO projects (project_name, description, created_by, assigned_to) VALUES (?, ?, ?, ?)";
+    $sql = "INSERT INTO projects (project_name, description, created_by, assigned_to, status) VALUES (?, ?, ?, ?, ?)";
     $stmt = $conn->prepare($sql);
     if (!$stmt) {
         die("Prepare failed: " . $conn->error);
     }
-    $stmt->bind_param("ssii", $project_name, $description, $created_by, $assigned_to);
+    $stmt->bind_param("ssisi", $project_name, $description, $created_by, $assigned_to, $status);
 
     if ($stmt->execute()) {
         echo json_encode(["status" => "success", "message" => "Project created successfully!"]);
@@ -152,30 +162,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                 d="m17.418 3.623-.018-.008a6.713 6.713 0 0 0-2.4-.569V2h1a1 1 0 1 0 0-2h-2a1 1 0 0 0-1 1v2H9.89A6.977 6.977 0 0 1 12 8v5h-2V8A5 5 0 1 0 0 8v6a1 1 0 0 0 1 1h8v4a1 1 0 0 0 1 1h2a1 1 0 0 0 1-1v-4h6a1 1 0 0 0 1-1V8a5 5 0 0 0-2.582-4.377ZM6 12H4a1 1 0 0 1 0-2h2a1 1 0 0 1 0 2Z" />
                         </svg>
                         <span class="flex-1 ms-3 whitespace-nowrap">Inbox</span>
-                        <span
-                            class="inline-flex items-center justify-center w-3 h-3 p-3 ms-3 text-sm font-medium text-blue-800 bg-blue-100 rounded-full dark:bg-blue-900 dark:text-blue-300">
-                            <?php
-                            $receiver_id = $_SESSION['user_id'];
-                            $query = "SELECT COUNT(*) AS numberOfRequests 
-                                FROM join_requests 
-                                WHERE receiver_id = ? AND status = 'pending'";
-                            $stmt = $conn->prepare($query); 
-                            if (!$stmt) {
-                                die("Prepare failed: " . $conn->error);
-                            }
-
-                            $stmt->bind_param("i", $receiver_id);
-                            $stmt->execute();
-                            $result = $stmt->get_result();
-                            $row = $result->fetch_assoc();
-                            $numberOfRequests = $row['numberOfRequests'];
-
-                            $stmt->close();
-                            $conn->close();
-                            
-                            echo $numberOfRequests;
-                            ?>
-                        </span>
                     </a>
                 </li>
                 <li>
@@ -295,6 +281,19 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                     <textarea id="project-description" name="project_description"
                                         class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
                                         rows="4" placeholder="Enter project description" required></textarea>
+                                </div>
+                                <div class="mb-6">
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Project Status</label>
+                                    <div class="flex items-center space-x-4">
+                                        <div class="flex items-center">
+                                            <input type="radio" name="status" value="public" checked>
+                                            <label class="ml-2 text-gray-700">Public</label>
+                                        </div>
+                                        <div class="flex items-center">
+                                            <input type="radio" name="status" value="private">
+                                            <label class="ml-2 text-gray-700">Private</label>
+                                        </div>
+                                    </div>
                                 </div>
                                 <div class="mb-6">
                                     <label class="block text-sm font-medium text-gray-700 mb-2">Select Team
