@@ -18,8 +18,9 @@ if ($_SESSION['role'] !== 'Chef') {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard</title>
-    <link rel="stylesheet" href="../assets/css/tailwind.css">
+    <link rel="stylesheet" href="<?= BASE_URL ?>../assets/css/tailwind.css">
     <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
 </head>
 
 <body class="bg-gray-900">
@@ -81,7 +82,7 @@ if ($_SESSION['role'] !== 'Chef') {
                         <span class="flex-1 ms-3 whitespace-nowrap">Inbox</span>
                         <span
                             class="inline-flex items-center justify-center w-3 h-3 p-3 ms-3 text-sm font-medium text-blue-800 bg-blue-100 rounded-full dark:bg-blue-900 dark:text-blue-300"><?php
-                            include '../config/database.php';
+                            include BASE_PATH . 'config/database.php';
                             $receiver_id = $_SESSION['user_id'];
                             $query = "SELECT COUNT(*) AS numberOfRequests 
                                FROM join_requests 

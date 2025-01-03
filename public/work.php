@@ -6,7 +6,7 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'member') {
     exit();
 }
 
-include '../config/database.php';
+include BASE_PATH . 'config/database.php';
 
 $member_id = $_SESSION['user_id'];
 $query = "SELECT p.project_id, p.project_name 
@@ -104,6 +104,7 @@ $conn->close();
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Work Dashboard</title>
     <link rel="stylesheet" href="../assets/css/tailwind.css">
+    <script src="https://cdn.tailwindcss.com"></script>
 </head>
 
 <body class="bg-gray-100 min-h-screen flex">

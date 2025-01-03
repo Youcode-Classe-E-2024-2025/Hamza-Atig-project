@@ -6,7 +6,7 @@ if (!isset($_SESSION['user_id'])) {
     exit();
 }
 
-include '../config/database.php';
+include BASE_PATH . 'config/database.php';
 
 $created_by = $_SESSION['user_id'];
 $query = "SELECT project_id, project_name FROM projects WHERE created_by = ?";
@@ -123,7 +123,8 @@ $conn->close();
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Kanban Board</title>
-    <link rel="stylesheet" href="../assets/css/tailwind.css">
+    <link rel="stylesheet" href="<?= BASE_URL ?>../assets/css/tailwind.css">
+    <script src="https://cdn.tailwindcss.com"></script>
 </head>
 
 <body class="bg-gray-900 min-h-screen p-6">

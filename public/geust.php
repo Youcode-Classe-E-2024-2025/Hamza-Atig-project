@@ -1,5 +1,5 @@
 <?php
-include '../config/database.php';
+include BASE_PATH . 'config/database.php';
 
 $query = "SELECT * FROM projects WHERE status = 1";
 $result = $conn->query($query);

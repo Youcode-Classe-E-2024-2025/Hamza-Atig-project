@@ -6,7 +6,7 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'member') {
     exit();
 }
 
-include '../config/database.php';
+include BASE_PATH . 'config/database.php';
 
 $query = "SELECT user_id, username, team_name FROM users WHERE role = 'Chef'";
 $chefs_result = $conn->query($query);
@@ -78,7 +78,8 @@ $conn->close();
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Send Join Request</title>
-    <link rel="stylesheet" href="../assets/css/tailwind.css">
+    <link rel="stylesheet" href="<?= BASE_URL ?>../assets/css/tailwind.css">
+    <script src="https://cdn.tailwindcss.com"></script>
 </head>
 
 <body class="bg-gray-100 min-h-screen flex">

@@ -1,5 +1,5 @@
 <?php
-include '../config/database.php';
+include BASE_PATH . 'config/database.php';
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $username = trim(htmlspecialchars($_POST['username']));
