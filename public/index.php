@@ -152,8 +152,25 @@ if ($_SESSION['role'] !== 'Chef') {
                                 <span>Total Projects</span>
                             </div>
 
+                            <?php
+                            include BASE_PATH . 'config/database.php';
+
+                            $query = "SELECT COUNT(*) AS total FROM projects";
+                            $stmt = $conn->prepare($query);
+                            if (!$stmt) {
+                                die("Prepare failed: " . $conn->error);
+                            }
+
+                            $stmt->execute();
+                            $result = $stmt->get_result();
+                            $row = $result->fetch_assoc();
+                            $total = $row['total'];
+
+                            $stmt->close();
+                            ?>
+
                             <div class="text-3xl dark:text-gray-100">
-                                108
+                                <?php echo $total; ?>
                             </div>
 
                             <div
@@ -175,11 +192,27 @@ if ($_SESSION['role'] !== 'Chef') {
                         <div class="space-y-2">
                             <div
                                 class="flex items-center space-x-2 rtl:space-x-reverse text-sm font-medium text-gray-500 dark:text-gray-400">
-                                <span>Completed Projects</span>
+                                <span>Total Mambers</span>
                             </div>
 
                             <div class="text-3xl dark:text-gray-100">
-                                97
+                                <?php
+                                include BASE_PATH . 'config/database.php';
+
+                                $query = "SELECT COUNT(*) AS totalMembers FROM users WHERE role = 'member'";
+                                $stmt = $conn->prepare($query);
+                                if (!$stmt) {
+                                    die("Prepare failed: " . $conn->error);
+                                }
+
+                                $stmt->execute();
+                                $result = $stmt->get_result();
+                                $row = $result->fetch_assoc();
+                                $totalMembers = $row['totalMembers'];
+
+                                $stmt->close();
+                                echo $totalMembers;
+                                ?>
                             </div>
 
                             <div
@@ -207,7 +240,23 @@ if ($_SESSION['role'] !== 'Chef') {
                             </div>
 
                             <div class="text-3xl dark:text-gray-100">
-                                353
+                                <?php
+                                include BASE_PATH . 'config/database.php';
+
+                                $query = "SELECT COUNT(*) AS totalTasks FROM tasks";
+                                $stmt = $conn->prepare($query);
+                                if (!$stmt) {
+                                    die("Prepare failed: " . $conn->error);
+                                }
+
+                                $stmt->execute();
+                                $result = $stmt->get_result();
+                                $row = $result->fetch_assoc();
+                                $totalTasks = $row['totalTasks'];
+
+                                $stmt->close();
+                                echo $totalTasks;
+                                ?>
                             </div>
 
                             <div
