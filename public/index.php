@@ -280,8 +280,7 @@ if ($_SESSION['role'] !== 'Chef') {
     <div class="w-[79%] left-[18.8%] top-[35%] absolute bg-white rounded-lg shadow dark:bg-gray-800 p-4 md:p-6">
             <div class="flex justify-between">
                 <div>
-                    <h5 class="leading-none text-3xl font-bold text-gray-900 dark:text-white pb-2">30</h5>
-                    <p class="text-base font-normal text-gray-500 dark:text-gray-400">Join Request</p>
+                    <p class="text-base font-normal text-gray-500 dark:text-gray-400">Total tasks</p>
                 </div>
                 <div
                     class="flex items-center px-2.5 py-0.5 text-base font-semibold text-green-500 dark:text-green-500 text-center">
@@ -396,17 +395,38 @@ if ($_SESSION['role'] !== 'Chef') {
                     },
                     series: [
                         {
-                            name: "New users",
-                            data: [10, 20],
+                            name: "Tasks Created",
+                            data: [
+                                <?php
+                                $today = date("Y-m-d");
+                                for ($i = 0; $i < 30; $i++) {
+                                    $date = date('Y-m-d', strtotime($today . " - " . $i . " days"));
+                                    $query = "SELECT COUNT(*) AS total FROM tasks WHERE DATE(created_at) = ?";
+                                    $stmt = $conn->prepare($query);
+                                    $stmt->bind_param("s", $date);
+                                    $stmt->execute();
+                                    $total = $stmt->get_result()->fetch_assoc()['total'];
+                                    echo $total;
+                                    if ($i < 29) {
+                                        echo ", ";
+                                    }
+                                }
+                                ?>
+                            ],
                             color: "#1A56DB",
                         },
                     ],
                     xaxis: {
                         categories: [
-                            "1st", "2nd", "3rd", "4th", "5th", "6th", "7th", "8th", "9th", "10th",
-                            "11th", "12th", "13th", "14th", "15th", "16th", "17th", "18th", "19th",
-                            "20th", "21st", "22nd", "23rd", "24th", "25th", "26th", "27th", "28th",
-                            "29th", "30th", "31st"
+                            <?php
+                            for ($i = 0; $i < 30; $i++) {
+                                $date = date('M j', strtotime($today . " - " . $i . " days"));
+                                echo "'$date'";
+                                if ($i < 29) {
+                                    echo ", ";
+                                }
+                            }
+                            ?>
                         ],
                         labels: {
                             show: false,
