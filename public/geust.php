@@ -1,30 +1,73 @@
 <?php
-include BASE_PATH . 'config/database.php';
+class Database {
+    private $conn;
 
-$query = "SELECT * FROM projects WHERE status = 1";
-$result = $conn->query($query);
-$public_projects = [];
+    public function __construct() {
+        include BASE_PATH . 'config/database.php';
+        $this->conn = new mysqli($host, $username, $password, $dbname);
 
-if ($result->num_rows > 0) {
-  while ($row = $result->fetch_assoc()) {
-    $public_projects[] = $row;
-  }
-}
-
-foreach ($public_projects as &$project) {
-  $project_id = $project['project_id'];
-  $task_query = "SELECT * FROM tasks WHERE project_id = $project_id ORDER BY status";
-  $task_result = $conn->query($task_query);
-  $project['tasks'] = [];
-
-  if ($task_result->num_rows > 0) {
-    while ($task_row = $task_result->fetch_assoc()) {
-      $project['tasks'][] = $task_row;
+        if ($this->conn->connect_error) {
+            die("Connection failed: " . $this->conn->connect_error);
+        }
     }
-  }
+
+    public function query($query) {
+        return $this->conn->query($query);
+    }
+
+    public function close() {
+        $this->conn->close();
+    }
 }
 
-$conn->close();
+class Project {
+    private $db;
+
+    public function __construct(Database $db) {
+        $this->db = $db;
+    }
+
+    public function getPublicProjects() {
+        $query = "SELECT * FROM projects WHERE status = 1";
+        $result = $this->db->query($query);
+        $publicProjects = [];
+
+        if ($result->num_rows > 0) {
+            while ($row = $result->fetch_assoc()) {
+                $publicProjects[] = $row;
+            }
+        }
+
+        return $publicProjects;
+    }
+
+    public function getTasksForProject($projectId) {
+        $query = "SELECT * FROM tasks WHERE project_id = $projectId ORDER BY status";
+        $result = $this->db->query($query);
+        $tasks = [];
+
+        if ($result->num_rows > 0) {
+            while ($row = $result->fetch_assoc()) {
+                $tasks[] = $row;
+            }
+        }
+
+        return $tasks;
+    }
+}
+
+// Main Logic
+$db = new Database();
+$project = new Project($db);
+
+$publicProjects = $project->getPublicProjects();
+
+foreach ($publicProjects as &$projectItem) {
+    $projectId = $projectItem['project_id'];
+    $projectItem['tasks'] = $project->getTasksForProject($projectId);
+}
+
+$db->close();
 ?>
 
 <!DOCTYPE html>
@@ -44,8 +87,8 @@ $conn->close();
   <div class="container mx-auto px-4 py-8">
     <h1 class="text-3xl font-bold text-center text-gray-800 mb-8">Public Projects</h1>
 
-    <?php if (!empty($public_projects)): ?>
-      <?php foreach ($public_projects as $project): ?>
+    <?php if (!empty($publicProjects)): ?>
+      <?php foreach ($publicProjects as $project): ?>
         <div class="bg-white rounded-lg shadow-md p-6 mb-8">
           <h2 class="text-2xl font-semibold text-gray-700 mb-2"><?php echo htmlspecialchars($project['project_name']); ?></h2>
           <p class="text-gray-600 mb-4"><?php echo htmlspecialchars($project['description']); ?></p>

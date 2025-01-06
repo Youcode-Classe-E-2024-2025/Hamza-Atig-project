@@ -1,55 +1,92 @@
 <?php
 session_start();
 
+class Database {
+    private $conn;
+
+    public function __construct() {
+        include BASE_PATH . 'config/database.php';
+        $this->conn = new mysqli($host, $username, $password, $dbname);
+
+        if ($this->conn->connect_error) {
+            die("Connection failed: " . $this->conn->connect_error);
+        }
+    }
+
+    public function prepare($query) {
+        return $this->conn->prepare($query);
+    }
+
+    public function close() {
+        $this->conn->close();
+    }
+}
+
+class JoinRequest {
+    private $db;
+
+    public function __construct(Database $db) {
+        $this->db = $db;
+    }
+
+    public function getJoinRequests($receiverId) {
+        $query = "SELECT jr.request_id, jr.user_id, jr.status, u.username 
+                  FROM join_requests jr
+                  JOIN users u ON jr.user_id = u.user_id
+                  WHERE jr.receiver_id = ?";
+        $stmt = $this->db->prepare($query);
+        if (!$stmt) {
+            die("Prepare failed: " . $this->db->error);
+        }
+
+        $stmt->bind_param("i", $receiverId);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $joinRequests = [];
+        while ($row = $result->fetch_assoc()) {
+            $joinRequests[] = $row;
+        }
+        return $joinRequests;
+    }
+
+    public function updateRequestStatus($requestId, $status) {
+        $query = "UPDATE join_requests SET status = ? WHERE request_id = ?";
+        $stmt = $this->db->prepare($query);
+        if (!$stmt) {
+            die("Prepare failed: " . $this->db->error);
+        }
+        $stmt->bind_param("si", $status, $requestId);
+        return $stmt->execute();
+    }
+}
+
+// Main Logic
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'Chef') {
     header("Location: login.php");
     exit();
 }
 
-include BASE_PATH . 'config/database.php';
+$db = new Database();
+$joinRequest = new JoinRequest($db);
 
-$receiver_id = $_SESSION['user_id'];
-$query = "SELECT jr.request_id, jr.user_id, jr.status, u.username 
-          FROM join_requests jr
-          JOIN users u ON jr.user_id = u.user_id
-          WHERE jr.receiver_id = ?";
-$stmt = $conn->prepare($query);
-if (!$stmt) {
-    die("Prepare failed: " . $conn->error);
-}
-
-$stmt->bind_param("i", $receiver_id);
-$stmt->execute();
-$result = $stmt->get_result();
-$join_requests = [];
-if ($result->num_rows > 0) {
-    while ($row = $result->fetch_assoc()) {
-        $join_requests[] = $row;
-    }
-}
+$receiverId = $_SESSION['user_id'];
+$joinRequests = $joinRequest->getJoinRequests($receiverId);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && (isset($_POST['accept']) || isset($_POST['reject']))) {
-    $request_id = $_POST['request_id'];
+    $requestId = $_POST['request_id'];
     $status = isset($_POST['accept']) ? 'approved' : 'rejected';
 
-    $query = "UPDATE join_requests SET status = ? WHERE request_id = ?";
-    $stmt = $conn->prepare($query);
-    if (!$stmt) {
-        die("Prepare failed: " . $conn->error);
-    }
-    $stmt->bind_param("si", $status, $request_id);
-    if ($stmt->execute()) {
-        $success_message = "Request $status successfully!";
+    if ($joinRequest->updateRequestStatus($requestId, $status)) {
+        $successMessage = "Request $status successfully!";
     } else {
-        $error_message = "Failed to update request status.";
+        $errorMessage = "Failed to update request status.";
     }
 
     header("Location: inbox.php");
     exit();
 }
 
-$stmt->close();
-$conn->close();
+$db->close();
 ?>
 
 <!DOCTYPE html>
@@ -183,20 +220,20 @@ $conn->close();
     <div class="container mx-auto">
         <h1 class="text-2xl font-bold text-gray-900 mb-6">Welcome, <?php echo htmlspecialchars($_SESSION['username']); ?>!</h1>
 
-        <?php if (isset($success_message)): ?>
+        <?php if (isset($successMessage)): ?>
             <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-6">
-                <?php echo $success_message; ?>
+                <?php echo $successMessage; ?>
             </div>
         <?php endif; ?>
-        <?php if (isset($error_message)): ?>
+        <?php if (isset($errorMessage)): ?>
             <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
-                <?php echo $error_message; ?>
+                <?php echo $errorMessage; ?>
             </div>
         <?php endif; ?>
 
         <div>
             <h2 class="text-xl font-semibold text-gray-800 mb-4">Join Requests</h2>
-            <?php if (empty($join_requests)): ?>
+            <?php if (empty($joinRequests)): ?>
                 <p class="text-gray-600">No join requests found.</p>
             <?php else: ?>
                 <div class="bg-white absolute left-[18%] w-[80%] rounded-lg shadow overflow-hidden">
@@ -215,7 +252,7 @@ $conn->close();
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-200">
-                            <?php foreach ($join_requests as $request): ?>
+                            <?php foreach ($joinRequests as $request): ?>
                                 <tr>
                                     <td class="px-6 py-4">
                                         <div class="text-sm font-medium text-gray-900">

@@ -1,74 +1,116 @@
 <?php
 session_start();
 
+class Database {
+    private $conn;
+
+    public function __construct() {
+        include BASE_PATH . 'config/database.php';
+        $this->conn = new mysqli($host, $username, $password, $dbname);
+
+        if ($this->conn->connect_error) {
+            die("Connection failed: " . $this->conn->connect_error);
+        }
+    }
+
+    public function query($query) {
+        return $this->conn->query($query);
+    }
+
+    public function prepare($query) {
+        return $this->conn->prepare($query);
+    }
+
+    public function close() {
+        $this->conn->close();
+    }
+}
+
+class Member {
+    private $db;
+
+    public function __construct(Database $db) {
+        $this->db = $db;
+    }
+
+    public function getChefs() {
+        $query = "SELECT user_id, username, team_name FROM users WHERE role = 'Chef'";
+        $result = $this->db->query($query);
+        $chefs = [];
+        while ($row = $result->fetch_assoc()) {
+            $chefs[] = $row;
+        }
+        return $chefs;
+    }
+
+    public function getJoinRequests($memberId) {
+        $query = "SELECT jr.request_id, jr.receiver_id, jr.status, u.username, u.team_name 
+                  FROM join_requests jr
+                  JOIN users u ON jr.receiver_id = u.user_id
+                  WHERE jr.user_id = ?";
+        $stmt = $this->db->prepare($query);
+        if (!$stmt) {
+            die("Prepare failed: " . $this->db->error);
+        }
+
+        $stmt->bind_param("i", $memberId);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $joinRequests = [];
+        while ($row = $result->fetch_assoc()) {
+            $joinRequests[] = $row;
+        }
+        return $joinRequests;
+    }
+
+    public function sendJoinRequest($memberId, $chefId) {
+        $query = "SELECT request_id FROM join_requests WHERE user_id = ? AND receiver_id = ?";
+        $stmt = $this->db->prepare($query);
+        if (!$stmt) {
+            die("Prepare failed: " . $this->db->error);
+        }
+        $stmt->bind_param("ii", $memberId, $chefId);
+        $stmt->execute();
+        $result = $stmt->get_result();
+
+        if ($result->num_rows === 0) {
+            $query = "INSERT INTO join_requests (user_id, receiver_id, status) VALUES (?, ?, 'pending')";
+            $stmt = $this->db->prepare($query);
+            if (!$stmt) {
+                die("Prepare failed: " . $this->db->error);
+            }
+            $stmt->bind_param("ii", $memberId, $chefId);
+            return $stmt->execute();
+        } else {
+            return false;
+        }
+    }
+}
+
+// Main Logic
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'member') {
     header("Location: login.php");
     exit();
 }
 
-include BASE_PATH . 'config/database.php';
+$db = new Database();
+$member = new Member($db);
 
-$query = "SELECT user_id, username, team_name FROM users WHERE role = 'Chef'";
-$chefs_result = $conn->query($query);
-$chefs = [];
-if ($chefs_result->num_rows > 0) {
-    while ($row = $chefs_result->fetch_assoc()) {
-        $chefs[] = $row;
-    }
-}
-
-$member_id = $_SESSION['user_id'];
-$query = "SELECT jr.request_id, jr.receiver_id, jr.status, u.username, u.team_name 
-          FROM join_requests jr
-          JOIN users u ON jr.receiver_id = u.user_id
-          WHERE jr.user_id = ?";
-$stmt = $conn->prepare($query);
-if (!$stmt) {
-    die("Prepare failed: " . $conn->error);
-}
-
-$stmt->bind_param("i", $member_id);
-$stmt->execute();
-$result = $stmt->get_result();
-$join_requests = [];
-if ($result->num_rows > 0) {
-    while ($row = $result->fetch_assoc()) {
-        $join_requests[] = $row;
-    }
-}
+$memberId = $_SESSION['user_id'];
+$chefs = $member->getChefs();
+$joinRequests = $member->getJoinRequests($memberId);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['send_request'])) {
-    $chef_id = $_POST['chef_id'];
-    $member_id = $_SESSION['user_id'];
+    $chefId = $_POST['chef_id'];
 
-    $query = "SELECT request_id FROM join_requests WHERE user_id = ? AND receiver_id = ?";
-    $stmt = $conn->prepare($query);
-    if (!$stmt) {
-        die("Prepare failed: " . $conn->error);
-    }
-    $stmt->bind_param("ii", $member_id, $chef_id);
-    $stmt->execute();
-    $result = $stmt->get_result();
-
-    if ($result->num_rows === 0) {
-        $query = "INSERT INTO join_requests (user_id, receiver_id, status) VALUES (?, ?, 'pending')";
-        $stmt = $conn->prepare($query);
-        if (!$stmt) {
-            die("Prepare failed: " . $conn->error);
-        }
-        $stmt->bind_param("ii", $member_id, $chef_id);
-        if ($stmt->execute()) {
-            $success_message = "Join request sent successfully!";
-        } else {
-            $error_message = "Failed to send join request.";
-        }
+    if ($member->sendJoinRequest($memberId, $chefId)) {
+        $success_message = "Join request sent successfully!";
     } else {
         $error_message = "You have already sent a request to this chef.";
     }
 }
 
-$stmt->close();
-$conn->close();
+$db->close();
 ?>
 
 <!DOCTYPE html>
@@ -148,7 +190,7 @@ $conn->close();
         <!-- List of Join Requests -->
         <div>
             <h2 class="text-xl font-semibold text-gray-800 mb-4">My Join Requests</h2>
-            <?php if (empty($join_requests)): ?>
+            <?php if (empty($joinRequests)): ?>
                 <p class="text-gray-600">No join requests sent.</p>
             <?php else: ?>
                 <div class="bg-white rounded-lg shadow overflow-hidden">
@@ -167,7 +209,7 @@ $conn->close();
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-200">
-                            <?php foreach ($join_requests as $request): ?>
+                            <?php foreach ($joinRequests as $request): ?>
                                 <tr>
                                     <td class="px-6 py-4">
                                         <div class="text-sm font-medium text-gray-900">

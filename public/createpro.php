@@ -1,6 +1,105 @@
 <?php
 session_start();
 
+class Database {
+    private $conn;
+
+    public function __construct() {
+        include BASE_PATH . 'config/database.php';
+        $this->conn = new mysqli($host, $username, $password, $dbname);
+
+        if ($this->conn->connect_error) {
+            die("Connection failed: " . $this->conn->connect_error);
+        }
+    }
+
+    public function prepare($query) {
+        return $this->conn->prepare($query);
+    }
+
+    public function query($query) {
+        return $this->conn->query($query);
+    }
+
+    public function close() {
+        $this->conn->close();
+    }
+}
+
+class User {
+    private $db;
+
+    public function __construct(Database $db) {
+        $this->db = $db;
+    }
+
+    public function getApprovedMembers($receiverId) {
+        $sql = "SELECT u.user_id, u.username, u.role 
+                FROM users u
+                JOIN join_requests jr ON u.user_id = jr.user_id
+                WHERE jr.receiver_id = ? AND jr.status = 'approved'";
+        $stmt = $this->db->prepare($sql);
+        if (!$stmt) {
+            die("Prepare failed: " . $this->db->error);
+        }
+
+        $stmt->bind_param("i", $receiverId);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $approvedMembers = [];
+        while ($row = $result->fetch_assoc()) {
+            $approvedMembers[] = $row;
+        }
+        return $approvedMembers;
+    }
+
+    public function getMembers() {
+        $sql = "SELECT user_id, username FROM users WHERE role = 'member'";
+        $result = $this->db->query($sql);
+        $users = [];
+        while ($row = $result->fetch_assoc()) {
+            $users[] = $row;
+        }
+        return $users;
+    }
+}
+
+class Project {
+    private $db;
+
+    public function __construct(Database $db) {
+        $this->db = $db;
+    }
+
+    public function createProject($projectName, $description, $createdBy, $assignedTo, $status) {
+        $sql = "INSERT INTO projects (project_name, description, created_by, assigned_to, status) VALUES (?, ?, ?, ?, ?)";
+        $stmt = $this->db->prepare($sql);
+        if (!$stmt) {
+            die("Prepare failed: " . $this->db->error);
+        }
+        $stmt->bind_param("ssisi", $projectName, $description, $createdBy, $assignedTo, $status);
+
+        if ($stmt->execute()) {
+            echo "Project created successfully!";
+        } else {
+            return ["status" => "error", "message" => "Error: " . $stmt->error];
+        }
+    }
+
+    public function validateAssignedMember($assignedTo) {
+        $sql = "SELECT user_id FROM users WHERE user_id = ?";
+        $stmt = $this->db->prepare($sql);
+        if (!$stmt) {
+            die("Prepare failed: " . $this->db->error);
+        }
+        $stmt->bind_param("i", $assignedTo);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        return $result->num_rows > 0;
+    }
+}
+
+// Main Logic
 if (!isset($_SESSION['user_id'])) {
     header("Location: login.php");
     exit();
@@ -11,88 +110,47 @@ if ($_SESSION['role'] !== 'Chef') {
     exit();
 }
 
-include BASE_PATH . 'config/database.php';
+$db = new Database();
+$user = new User($db);
+$project = new Project($db);
 
-$sql = "SELECT u.user_id, u.username, u.role 
-        FROM users u
-        JOIN join_requests jr ON u.user_id = jr.user_id
-        WHERE jr.receiver_id = ? AND jr.status = 'approved'";
-$stmt = $conn->prepare($sql);
-if (!$stmt) {
-    die("Prepare failed: " . $conn->error);
-}
-
-$stmt->bind_param("i", $_SESSION['user_id']);
-$stmt->execute();
-$result = $stmt->get_result();
-$approvedMembers = [];
-if ($result->num_rows > 0) {
-    while ($row = $result->fetch_assoc()) {
-        $approvedMembers[] = $row;
-    }
-}
+$approvedMembers = $user->getApprovedMembers($_SESSION['user_id']);
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $project_name = trim(htmlspecialchars($_POST['project_name']));
+    $projectName = trim(htmlspecialchars($_POST['project_name']));
     $description = trim(htmlspecialchars($_POST['project_description']));
-    $created_by = $_SESSION['user_id'];
-    $assigned_to = isset($_POST['assigned_to']) ? (int) $_POST['assigned_to'] : null;
-    $status_input = trim(htmlspecialchars($_POST['status']));
+    $createdBy = $_SESSION['user_id'];
+    $assignedTo = isset($_POST['assigned_to']) ? (int) $_POST['assigned_to'] : null;
+    $statusInput = trim(htmlspecialchars($_POST['status']));
 
-    if (empty($project_name) || empty($description)) {
+    if (empty($projectName) || empty($description)) {
         die(json_encode(["status" => "error", "message" => "Please fill all required fields."]));
     }
 
-    if (!in_array($status_input, ['public', 'private'])) {
+    if (!in_array($statusInput, ['public', 'private'])) {
         die(json_encode(["status" => "error", "message" => "Invalid status."]));
     }
 
-    $status_map = [
+    $statusMap = [
         'public' => 1,
         'private' => 0,
     ];
-    $status = $status_map[$status_input];
+    $status = $statusMap[$statusInput];
 
-    if ($assigned_to) {
-        $sql = "SELECT user_id FROM users WHERE user_id = ?";
-        $stmt = $conn->prepare($sql);
-        if (!$stmt) {
-            die("Prepare failed: " . $conn->error);
-        }
-        $stmt->bind_param("i", $assigned_to);
-        $stmt->execute();
-        $result = $stmt->get_result();
-
-        if ($result->num_rows === 0) {
-            die(json_encode(["status" => "error", "message" => "The assigned member does not exist."]));
-        }
+    if ($assignedTo && !$project->validateAssignedMember($assignedTo)) {
+        die(json_encode(["status" => "error", "message" => "The assigned member does not exist."]));
     }
 
-    $sql = "INSERT INTO projects (project_name, description, created_by, assigned_to, status) VALUES (?, ?, ?, ?, ?)";
-    $stmt = $conn->prepare($sql);
-    if (!$stmt) {
-        die("Prepare failed: " . $conn->error);
-    }
-    $stmt->bind_param("ssisi", $project_name, $description, $created_by, $assigned_to, $status);
+    $response = $project->createProject($projectName, $description, $createdBy, $assignedTo, $status);
+    echo json_encode($response);
 
-    if ($stmt->execute()) {
-        echo json_encode(["status" => "success", "message" => "Project created successfully!"]);
-    } else {
-        echo json_encode(["status" => "error", "message" => "Error: " . $stmt->error]);
-    }
-
-    $stmt->close();
-    $conn->close();
+    $db->close();
+    exit();
 } else {
-    $sql = "SELECT user_id, username FROM users WHERE role = 'member'";
-    $result = $conn->query($sql);
-    $users = [];
-    if ($result->num_rows > 0) {
-        while ($row = $result->fetch_assoc()) {
-            $users[] = $row;
-        }
-    }
+    $users = $user->getMembers();
 }
+
+$db->close();
 ?>
 
 

@@ -1,44 +1,85 @@
 <?php
-include BASE_PATH . 'config/database.php';
+session_start();
 
+class Database {
+    private $conn;
+
+    public function __construct() {
+        include BASE_PATH . 'config/database.php';
+        $this->conn = new mysqli($host, $username, $password, $dbname);
+
+        if ($this->conn->connect_error) {
+            die("Connection failed: " . $this->conn->connect_error);
+        }
+    }
+
+    public function prepare($query) {
+        return $this->conn->prepare($query);
+    }
+
+    public function close() {
+        $this->conn->close();
+    }
+}
+
+class Auth {
+    private $db;
+
+    public function __construct(Database $db) {
+        $this->db = $db;
+    }
+
+    public function login($username, $password) {
+        if (empty($username) || empty($password)) {
+            return "<div class='bg-red-900 border border-red-700 text-red-300 px-4 py-3 rounded relative mb-4 animate-fade-in' role='alert'>Please fill all required fields.</div>";
+        }
+
+        $sql = "SELECT user_id, username, password_hash, role FROM users WHERE username = ?";
+        $stmt = $this->db->prepare($sql);
+        if (!$stmt) {
+            die("Prepare failed: " . $this->db->error);
+        }
+        $stmt->bind_param("s", $username);
+        $stmt->execute();
+        $result = $stmt->get_result();
+
+        if ($result->num_rows === 1) {
+            $user = $result->fetch_assoc();
+
+            if (password_verify($password, $user['password_hash'])) {
+                $_SESSION['user_id'] = $user['user_id'];
+                $_SESSION['username'] = htmlspecialchars($user['username']);
+                $_SESSION['role'] = htmlspecialchars($user['role']);
+
+                if ($user['role'] === 'Chef') {
+                    header("Location: index.php");
+                } else {
+                    header("Location: member.php");
+                }
+                exit();
+            } else {
+                return "<div class='bg-red-900 border border-red-700 text-red-300 px-4 py-3 rounded relative mb-4 animate-fade-in' role='alert'>Invalid username or password.</div>";
+            }
+        } else {
+            return "<div class='bg-red-900 border border-red-700 text-red-300 px-4 py-3 rounded relative mb-4 animate-fade-in' role='alert'>Invalid username or password.</div>";
+        }
+    }
+}
+
+// Main Logic
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
+    $db = new Database();
+    $auth = new Auth($db);
+
     $username = trim(htmlspecialchars($_POST['username']));
     $password = trim(htmlspecialchars($_POST['password']));
 
-    if (empty($username) || empty($password)) {
-        die("<div class='bg-red-900 border border-red-700 text-red-300 px-4 py-3 rounded relative mb-4 animate-fade-in' role='alert'>Please fill all required fields.</div>");
+    $message = $auth->login($username, $password);
+    if ($message) {
+        echo $message;
     }
 
-    $sql = "SELECT user_id, username, password_hash, role FROM users WHERE username = ?";
-    $stmt = $conn->prepare($sql);
-    $stmt->bind_param("s", $username);
-    $stmt->execute();
-    $result = $stmt->get_result();
-
-    if ($result->num_rows === 1) {
-        $user = $result->fetch_assoc();
-
-        if (password_verify($password, $user['password_hash'])) {
-            session_start();
-            $_SESSION['user_id'] = $user['user_id'];
-            $_SESSION['username'] = htmlspecialchars($user['username']);
-            $_SESSION['role'] = htmlspecialchars($user['role']);
-
-            if ($user['role'] === 'Chef') {
-                header("Location: index.php");
-            } else {
-                header("Location: member.php");
-            }
-            exit();
-        } else {
-            echo "<div class='bg-red-900 border border-red-700 text-red-300 px-4 py-3 rounded relative mb-4 animate-fade-in' role='alert'>Invalid username or password.</div>";
-        }
-    } else {
-        echo "<div class='bg-red-900 border border-red-700 text-red-300 px-4 py-3 rounded relative mb-4 animate-fade-in' role='alert'>Invalid username or password.</div>";
-    }
-
-    $stmt->close();
-    $conn->close();
+    $db->close();
 }
 ?>
 

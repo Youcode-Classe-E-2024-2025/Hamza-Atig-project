@@ -1,14 +1,24 @@
 <?php
 session_start();
-if (!isset($_SESSION['user_id'])) {
-    header("Location: login.php");
-    exit();
+
+class Auth {
+    public static function checkLoggedIn() {
+        if (!isset($_SESSION['user_id'])) {
+            header("Location: login.php");
+            exit();
+        }
+    }
+
+    public static function checkRole($requiredRole) {
+        if ($_SESSION['role'] !== $requiredRole) {
+            header("Location: member.php");
+            exit();
+        }
+    }
 }
 
-if ($_SESSION['role'] !== 'Chef') {
-    header("Location: member.php");
-    exit();
-}
+Auth::checkLoggedIn();
+Auth::checkRole('Chef');
 ?>
 
 <!DOCTYPE html>

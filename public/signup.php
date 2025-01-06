@@ -1,7 +1,59 @@
 <?php
-include BASE_PATH . 'config/database.php';
+class Database {
+    private $conn;
+
+    public function __construct() {
+        include BASE_PATH . 'config/database.php';
+        $this->conn = new mysqli($host, $username, $password, $dbname);
+
+        if ($this->conn->connect_error) {
+            die("Connection failed: " . $this->conn->connect_error);
+        }
+    }
+
+    public function prepare($query) {
+        return $this->conn->prepare($query);
+    }
+
+    public function close() {
+        $this->conn->close();
+    }
+}
+
+class User {
+    private $db;
+
+    public function __construct(Database $db) {
+        $this->db = $db;
+    }
+
+    public function register($username, $email, $password, $role, $team_name, $professional_domain) {
+        if (empty($username) || empty($email) || empty($password) || empty($role)) {
+            return "<div class='bg-red-900 border border-red-700 text-red-300 px-4 py-3 rounded relative mb-4 animate-fade-in' role='alert'>Please fill all required fields.</div>";
+        }
+
+        $password_hash = password_hash($password, PASSWORD_DEFAULT);
+
+        $sql = "INSERT INTO users (username, email, password_hash, role, team_name, professional_domain) VALUES (?, ?, ?, ?, ?, ?)";
+        $stmt = $this->db->prepare($sql);
+        if (!$stmt) {
+            return "<div class='bg-red-900 border border-red-700 text-red-300 px-4 py-3 rounded relative mb-4 animate-fade-in' role='alert'>Prepare failed: " . $this->db->error . "</div>";
+        }
+
+        $stmt->bind_param("ssssss", $username, $email, $password_hash, $role, $team_name, $professional_domain);
+
+        if ($stmt->execute()) {
+            return "<div class='bg-green-900 border border-green-700 text-green-300 px-4 py-3 rounded relative mb-4 animate-fade-in' role='alert'>Signup successful!</div>";
+        } else {
+            return "<div class='bg-red-900 border border-red-700 text-red-300 px-4 py-3 rounded relative mb-4 animate-fade-in' role='alert'>Error: " . $stmt->error . "</div>";
+        }
+    }
+}
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
+    $db = new Database();
+    $user = new User($db);
+
     $username = trim(htmlspecialchars($_POST['username']));
     $email = trim(htmlspecialchars($_POST['email']));
     $password = trim(htmlspecialchars($_POST['password']));
@@ -13,24 +65,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $professional_domain = trim(htmlspecialchars($_POST['custom_professional_domain']));
     }
 
-    if (empty($username) || empty($email) || empty($password) || empty($role)) {
-        die("<div class='bg-red-900 border border-red-700 text-red-300 px-4 py-3 rounded relative mb-4 animate-fade-in' role='alert'>Please fill all required fields.</div>");
-    }
+    $message = $user->register($username, $email, $password, $role, $team_name, $professional_domain);
+    echo $message;
 
-    $password_hash = password_hash($password, PASSWORD_DEFAULT);
-
-    $sql = "INSERT INTO users (username, email, password_hash, role, team_name, professional_domain) VALUES (?, ?, ?, ?, ?, ?)";
-    $stmt = $conn->prepare($sql);
-    $stmt->bind_param("ssssss", $username, $email, $password_hash, $role, $team_name, $professional_domain);
-
-    if ($stmt->execute()) {
-        echo "<div class='bg-green-900 border border-green-700 text-green-300 px-4 py-3 rounded relative mb-4 animate-fade-in' role='alert'>Signup successful!</div>";
-    } else {
-        echo "<div class='bg-red-900 border border-red-700 text-red-300 px-4 py-3 rounded relative mb-4 animate-fade-in' role='alert'>Error: " . $stmt->error . "</div>";
-    }
-
-    $stmt->close();
-    $conn->close();
+    $db->close();
 }
 ?>
 

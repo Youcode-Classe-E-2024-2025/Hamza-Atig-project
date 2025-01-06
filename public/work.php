@@ -8,92 +8,132 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'member') {
 
 include BASE_PATH . 'config/database.php';
 
+class ProjectManager {
+    private $conn;
+    private $member_id;
+
+    public function __construct($conn, $member_id) {
+        $this->conn = $conn;
+        $this->member_id = $member_id;
+    }
+
+    public function getProjectsFromRequests() {
+        $query = "SELECT p.project_id, p.project_name 
+                  FROM projects p
+                  JOIN join_requests jr ON p.project_id = jr.receiver_id
+                  WHERE jr.user_id = ? AND jr.status = 'approved'";
+        $stmt = $this->conn->prepare($query);
+        if (!$stmt) {
+            die("Prepare failed: " . $this->conn->error);
+        }
+
+        $stmt->bind_param("i", $this->member_id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $projects = [];
+        if ($result->num_rows > 0) {
+            while ($row = $result->fetch_assoc()) {
+                $projects[] = $row;
+            }
+        }
+        return $projects;
+    }
+
+    public function getAssignedProjects() {
+        $query = "SELECT project_id, project_name 
+                  FROM projects 
+                  WHERE assigned_to = ? 
+                  ORDER BY created_at DESC";
+        $stmt = $this->conn->prepare($query);
+        if (!$stmt) {
+            die("Prepare failed: " . $this->conn->error);
+        }
+
+        $stmt->bind_param("i", $this->member_id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $projects = [];
+        if ($result->num_rows > 0) {
+            while ($row = $result->fetch_assoc()) {
+                $projects[] = $row;
+            }
+        }
+        return $projects;
+    }
+
+    public function getAllProjects() {
+        $projects_from_requests = $this->getProjectsFromRequests();
+        $assigned_projects = $this->getAssignedProjects();
+        return array_unique(array_merge($projects_from_requests, $assigned_projects), SORT_REGULAR);
+    }
+}
+
+class TaskManager {
+    private $conn;
+    private $member_id;
+
+    public function __construct($conn, $member_id) {
+        $this->conn = $conn;
+        $this->member_id = $member_id;
+    }
+
+    public function getTasks($project_id) {
+        $query = "SELECT task_id, task_title, task_description, due_date, status 
+                  FROM tasks 
+                  WHERE project_id = ? AND assigned_to = ? 
+                  ORDER BY due_date ASC";
+        $stmt = $this->conn->prepare($query);
+        if (!$stmt) {
+            die("Prepare failed: " . $this->conn->error);
+        }
+
+        $stmt->bind_param("ii", $project_id, $this->member_id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $tasks = [];
+        if ($result->num_rows > 0) {
+            while ($row = $result->fetch_assoc()) {
+                $tasks[] = $row;
+            }
+        }
+        return $tasks;
+    }
+
+    public function updateTaskStatus($task_id, $status) {
+        $query = "UPDATE tasks SET status = ? WHERE task_id = ?";
+        $stmt = $this->conn->prepare($query);
+        if (!$stmt) {
+            die("Prepare failed: " . $this->conn->error);
+        }
+
+        $stmt->bind_param("si", $status, $task_id);
+        return $stmt->execute();
+    }
+}
+
 $member_id = $_SESSION['user_id'];
-$query = "SELECT p.project_id, p.project_name 
-          FROM projects p
-          JOIN join_requests jr ON p.project_id = jr.receiver_id
-          WHERE jr.user_id = ? AND jr.status = 'approved'";
-$stmt = $conn->prepare($query);
-if (!$stmt) {
-    die("Prepare failed: " . $conn->error);
-}
-
-$stmt->bind_param("i", $member_id);
-$stmt->execute();
-$result = $stmt->get_result();
-$projects_from_requests = [];
-if ($result->num_rows > 0) {
-    while ($row = $result->fetch_assoc()) {
-        $projects_from_requests[] = $row;
-    }
-}
-
-$query = "SELECT project_id, project_name 
-          FROM projects 
-          WHERE assigned_to = ? 
-          ORDER BY created_at DESC";
-$stmt = $conn->prepare($query);
-if (!$stmt) {
-    die("Prepare failed: " . $conn->error);
-}
-
-$stmt->bind_param("i", $member_id);
-$stmt->execute();
-$result = $stmt->get_result();
-$assigned_projects = [];
-if ($result->num_rows > 0) {
-    while ($row = $result->fetch_assoc()) {
-        $assigned_projects[] = $row;
-    }
-}
-
-$all_projects = array_merge($projects_from_requests, $assigned_projects);
-
-$unique_projects = array_unique($all_projects, SORT_REGULAR);
+$projectManager = new ProjectManager($conn, $member_id);
+$all_projects = $projectManager->getAllProjects();
 
 $project_id = isset($_GET['project_id']) ? (int)$_GET['project_id'] : null;
 $tasks = [];
 if ($project_id) {
-    $query = "SELECT task_id, task_title, task_description, due_date, status 
-              FROM tasks 
-              WHERE project_id = ? AND assigned_to = ? 
-              ORDER BY due_date ASC";
-    $stmt = $conn->prepare($query);
-    if (!$stmt) {
-        die("Prepare failed: " . $conn->error);
-    }
-
-    $stmt->bind_param("ii", $project_id, $member_id);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    if ($result->num_rows > 0) {
-        while ($row = $result->fetch_assoc()) {
-            $tasks[] = $row;
-        }
-    }
+    $taskManager = new TaskManager($conn, $member_id);
+    $tasks = $taskManager->getTasks($project_id);
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_status'])) {
     $task_id = (int)$_POST['task_id'];
     $status = $_POST['status'];
 
-    $query = "UPDATE tasks SET status = ? WHERE task_id = ?";
-    $stmt = $conn->prepare($query);
-    if (!$stmt) {
-        die("Prepare failed: " . $conn->error);
-    }
-
-    $stmt->bind_param("si", $status, $task_id);
-    if ($stmt->execute()) {
+    $taskManager = new TaskManager($conn, $member_id);
+    if ($taskManager->updateTaskStatus($task_id, $status)) {
         header("Location: work.php?project_id=$project_id");
         exit();
     } else {
-        die("Error: " . $stmt->error);
+        die("Error updating task status.");
     }
 }
-
-$stmt->close();
-$conn->close();
 ?>
 
 <!DOCTYPE html>
@@ -137,7 +177,7 @@ $conn->close();
             <select id="projectSelect" onchange="loadProjectTasks()"
                 class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200">
                 <option value="">Choose a Project</option>
-                <?php foreach ($unique_projects as $project): ?>
+                <?php foreach ($all_projects as $project): ?>
                     <option value="<?php echo $project['project_id']; ?>"
                         <?php echo ($project_id == $project['project_id']) ? 'selected' : ''; ?>>
                         <?php echo htmlspecialchars($project['project_name']); ?>
@@ -305,7 +345,6 @@ $conn->close();
             document.getElementById("completed-count").textContent = document.getElementById("completed-tasks").children.length;
         }
 
-        // Update counts on page load
         document.addEventListener('DOMContentLoaded', updateCounts);
     </script>
 </body>

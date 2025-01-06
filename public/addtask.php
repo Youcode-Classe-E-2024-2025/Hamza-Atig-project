@@ -1,119 +1,184 @@
 <?php
 session_start();
 
+class Database {
+    private $conn;
+
+    public function __construct() {
+        include BASE_PATH . 'config/database.php';
+        $this->conn = new mysqli($host, $username, $password, $dbname);
+
+        if ($this->conn->connect_error) {
+            die("Connection failed: " . $this->conn->connect_error);
+        }
+    }
+
+    public function prepare($query) {
+        return $this->conn->prepare($query);
+    }
+
+    public function close() {
+        $this->conn->close();
+    }
+}
+
+class Project {
+    private $db;
+
+    public function __construct(Database $db) {
+        $this->db = $db;
+    }
+
+    public function getProjectsByUser($userId) {
+        $query = "SELECT project_id, project_name FROM projects WHERE created_by = ?";
+        $stmt = $this->db->prepare($query);
+        if (!$stmt) {
+            die("Prepare failed: " . $this->db->error);
+        }
+
+        $stmt->bind_param("i", $userId);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $projects = [];
+        while ($row = $result->fetch_assoc()) {
+            $projects[] = $row;
+        }
+        return $projects;
+    }
+}
+
+class Task {
+    private $db;
+
+    public function __construct(Database $db) {
+        $this->db = $db;
+    }
+
+    public function getTasksByProject($projectId) {
+        $query = "SELECT t.task_id, t.task_title, t.task_description, t.due_date, t.status, t.assigned_to, u.username 
+                  FROM tasks t
+                  LEFT JOIN users u ON t.assigned_to = u.user_id
+                  WHERE t.project_id = ?";
+        $stmt = $this->db->prepare($query);
+        if (!$stmt) {
+            die("Prepare failed: " . $this->db->error);
+        }
+
+        $stmt->bind_param("i", $projectId);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $tasks = [];
+        while ($row = $result->fetch_assoc()) {
+            $tasks[] = $row;
+        }
+        return $tasks;
+    }
+
+    public function deleteTask($taskId) {
+        $query = "DELETE FROM tasks WHERE task_id = ?";
+        $stmt = $this->db->prepare($query);
+        if (!$stmt) {
+            die("Prepare failed: " . $this->db->error);
+        }
+
+        $stmt->bind_param("i", $taskId);
+        return $stmt->execute();
+    }
+
+    public function addTask($taskTitle, $taskDescription, $dueDate, $projectId, $assignedTo) {
+        $query = "INSERT INTO tasks (task_title, task_description, due_date, status, project_id, assigned_to) 
+                  VALUES (?, ?, ?, 'backlog', ?, ?)";
+        $stmt = $this->db->prepare($query);
+        if (!$stmt) {
+            die("Prepare failed: " . $this->db->error);
+        }
+
+        $stmt->bind_param("sssii", $taskTitle, $taskDescription, $dueDate, $projectId, $assignedTo);
+        return $stmt->execute();
+    }
+}
+
+class Member {
+    private $db;
+
+    public function __construct(Database $db) {
+        $this->db = $db;
+    }
+
+    public function getMembersByProject($projectId) {
+        $query = "SELECT u.user_id, u.username 
+                  FROM users u
+                  JOIN join_requests jr ON u.user_id = jr.user_id
+                  WHERE jr.receiver_id = ? AND jr.status = 'approved'";
+        $stmt = $this->db->prepare($query);
+        if (!$stmt) {
+            die("Prepare failed: " . $this->db->error);
+        }
+
+        $stmt->bind_param("i", $projectId);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $members = [];
+        while ($row = $result->fetch_assoc()) {
+            $members[] = $row;
+        }
+        return $members;
+    }
+}
+
+// Main Logic
 if (!isset($_SESSION['user_id'])) {
     header("Location: login.php");
     exit();
 }
 
-include BASE_PATH . 'config/database.php';
+$db = new Database();
+$project = new Project($db);
+$task = new Task($db);
+$member = new Member($db);
 
 $created_by = $_SESSION['user_id'];
-$query = "SELECT project_id, project_name FROM projects WHERE created_by = ?";
-$stmt = $conn->prepare($query);
-if (!$stmt) {
-    die("Prepare failed: " . $conn->error);
-}
-
-$stmt->bind_param("i", $created_by);
-$stmt->execute();
-$result = $stmt->get_result();
-$projects = [];
-if ($result->num_rows > 0) {
-    while ($row = $result->fetch_assoc()) {
-        $projects[] = $row;
-    }
-}
+$projects = $project->getProjectsByUser($created_by);
 
 $project_id = isset($_GET['project_id']) ? (int) $_GET['project_id'] : null;
 $tasks = [];
-if ($project_id) {
-    $query = "SELECT t.task_id, t.task_title, t.task_description, t.due_date, t.status, t.assigned_to, u.username 
-              FROM tasks t
-              LEFT JOIN users u ON t.assigned_to = u.user_id
-              WHERE t.project_id = ?";
-    $stmt = $conn->prepare($query);
-    if (!$stmt) {
-        die("Prepare failed: " . $conn->error);
-    }
-
-    $stmt->bind_param("i", $project_id);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    if ($result->num_rows > 0) {
-        while ($row = $result->fetch_assoc()) {
-            $tasks[] = $row;
-        }
-    }
-}
-
 $members = [];
+
 if ($project_id) {
-    $query = "SELECT u.user_id, u.username 
-              FROM users u
-              JOIN join_requests jr ON u.user_id = jr.user_id
-              WHERE jr.receiver_id = ? AND jr.status = 'approved'";
-    $stmt = $conn->prepare($query);
-    if (!$stmt) {
-        die("Prepare failed: " . $conn->error);
+    $tasks = $task->getTasksByProject($project_id);
+    $members = $member->getMembersByProject($_SESSION['user_id']);
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (isset($_POST['delete_task'])) {
+        $task_id = (int)$_POST['task_id'];
+        if ($task->deleteTask($task_id)) {
+            echo "success";
+        } else {
+            echo "Error deleting task.";
+        }
     }
 
-    $stmt->bind_param("i", $_SESSION['user_id']);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    if ($result->num_rows > 0) {
-        while ($row = $result->fetch_assoc()) {
-            $members[] = $row;
+    if (isset($_POST['add_task'])) {
+        $task_title = trim($_POST['task_title']);
+        $task_description = trim($_POST['task_description']);
+        $due_date = $_POST['due_date'];
+        $assigned_to = isset($_POST['assigned_to']) ? (int) $_POST['assigned_to'] : null;
+
+        if (empty($task_title) || empty($task_description) || empty($due_date)) {
+            die("Please fill in all required fields.");
+        }
+
+        if ($task->addTask($task_title, $task_description, $due_date, $project_id, $assigned_to)) {
+            header("Location: addtask.php?project_id=$project_id");
+            exit();
+        } else {
+            die("Error adding task.");
         }
     }
 }
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_task'])) {
-    $task_id = (int)$_POST['task_id'];
-    $project_id = isset($_POST['project_id']) ? (int)$_POST['project_id'] : null;
-
-    $query = "DELETE FROM tasks WHERE task_id = ?";
-    $stmt = $conn->prepare($query);
-    if (!$stmt) {
-        die("Prepare failed: " . $conn->error);
-    }
-
-    $stmt->bind_param("i", $task_id);
-    if ($stmt->execute()) {
-        echo "success";
-    } else {
-        echo "Error: " . $stmt->error;
-    }
-}
-
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_task'])) {
-    $task_title = trim($_POST['task_title']);
-    $task_description = trim($_POST['task_description']);
-    $due_date = $_POST['due_date'];
-    $assigned_to = isset($_POST['assigned_to']) ? (int) $_POST['assigned_to'] : null;
-
-    if (empty($task_title) || empty($task_description) || empty($due_date)) {
-        die("Please fill in all required fields.");
-    }
-
-    $query = "INSERT INTO tasks (task_title, task_description, due_date, status, project_id, assigned_to) 
-              VALUES (?, ?, ?, 'backlog', ?, ?)";
-    $stmt = $conn->prepare($query);
-    if (!$stmt) {
-        die("Prepare failed: " . $conn->error);
-    }
-
-    $stmt->bind_param("sssii", $task_title, $task_description, $due_date, $project_id, $assigned_to);
-    if ($stmt->execute()) {
-        header("Location: addtask.php?project_id=$project_id");
-        exit();
-    } else {
-        die("Error: " . $stmt->error);
-    }
-}
-
-$stmt->close();
-$conn->close();
+$db->close();
 ?>
 
 <!DOCTYPE html>
