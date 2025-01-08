@@ -16,6 +16,7 @@ $routes = [
     'geust.php' => 'geust.php',
     'member.php' => 'member.php',
     'send_request.php' => 'send_request.php',
+    'export.php' => 'export.php'
 ];
 
 if (array_key_exists($uri, $routes)) {
