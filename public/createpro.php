@@ -1,10 +1,12 @@
 <?php
 session_start();
 
-class Database {
+class Database
+{
     private $conn;
 
-    public function __construct() {
+    public function __construct()
+    {
         include BASE_PATH . 'config/database.php';
         $this->conn = new mysqli($host, $username, $password, $dbname);
 
@@ -13,27 +15,33 @@ class Database {
         }
     }
 
-    public function prepare($query) {
+    public function prepare($query)
+    {
         return $this->conn->prepare($query);
     }
 
-    public function query($query) {
+    public function query($query)
+    {
         return $this->conn->query($query);
     }
 
-    public function close() {
+    public function close()
+    {
         $this->conn->close();
     }
 }
 
-class User {
+class User
+{
     private $db;
 
-    public function __construct(Database $db) {
+    public function __construct(Database $db)
+    {
         $this->db = $db;
     }
 
-    public function getApprovedMembers($receiverId) {
+    public function getApprovedMembers($receiverId)
+    {
         $sql = "SELECT u.user_id, u.username, u.role 
                 FROM users u
                 JOIN join_requests jr ON u.user_id = jr.user_id
@@ -53,7 +61,8 @@ class User {
         return $approvedMembers;
     }
 
-    public function getMembers() {
+    public function getMembers()
+    {
         $sql = "SELECT user_id, username FROM users WHERE role = 'member'";
         $result = $this->db->query($sql);
         $users = [];
@@ -64,14 +73,17 @@ class User {
     }
 }
 
-class Project {
+class Project
+{
     private $db;
 
-    public function __construct(Database $db) {
+    public function __construct(Database $db)
+    {
         $this->db = $db;
     }
 
-    public function createProject($projectName, $description, $createdBy, $assignedTo, $status) {
+    public function createProject($projectName, $description, $createdBy, $assignedTo, $status)
+    {
         $sql = "INSERT INTO projects (project_name, description, created_by, assigned_to, status) VALUES (?, ?, ?, ?, ?)";
         $stmt = $this->db->prepare($sql);
         if (!$stmt) {
@@ -86,7 +98,8 @@ class Project {
         }
     }
 
-    public function validateAssignedMember($assignedTo) {
+    public function validateAssignedMember($assignedTo)
+    {
         $sql = "SELECT user_id FROM users WHERE user_id = ?";
         $stmt = $this->db->prepare($sql);
         if (!$stmt) {
@@ -163,6 +176,7 @@ $db->close();
     <title>Kanban Board</title>
     <link rel="stylesheet" href="<?= BASE_URL ?>assets/css/tailwind.css">
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/commonmark@0.31.2/dist/commonmark.min.js"></script>
 </head>
 
 <body class="bg-gray-900 min-h-screen p-6">
@@ -304,7 +318,20 @@ $db->close();
                             ?>
                         </span>
                     </div>
-                    <p class="text-gray-700">This project is currently in progress.</p>
+                    <div class="markdown-body prose prose-sm">
+                        <?php
+                        require_once __DIR__ . '/../vendor/autoload.php';
+                        $parser = new \League\CommonMark\CommonMarkConverter();
+                        $query2 = "SELECT description FROM projects WHERE project_name = ?";
+                        $stmt2 = $conn->prepare($query2);
+                        $stmt2->bind_param("s", $project_name);
+                        $project_name = $row['project_name'];
+                        $stmt2->execute();
+                        $result2 = $stmt2->get_result();
+                        $row2 = $result2->fetch_assoc();
+                        echo $parser->convertToHtml($row2['description']);
+                        ?>
+                    </div>
                 </li>
             <?php endwhile; ?>
         </ul>
